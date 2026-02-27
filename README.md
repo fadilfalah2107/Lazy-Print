@@ -1,15 +1,16 @@
+
 <div align="center">
 
 ```
  ██╗      █████╗ ███████╗██╗   ██╗    ██████╗ ██████╗ ██╗███╗   ██╗████████╗
  ██║     ██╔══██╗╚════██║╚██╗ ██╔╝    ██╔══██╗██╔══██╗██║████╗  ██║╚══██╔══╝
- ██║     ███████║    ██╔╝ ╚████╔╝     ██████╔╝██████╔╝██║██╔██╗ ██║   ██║
- ██║     ██╔══██║   ██╔╝   ╚██╔╝      ██╔═══╝ ██╔══██╗██║██║╚██╗██║   ██║
- ███████╗██║  ██║   ██║     ██║       ██║     ██║  ██║██║██║ ╚████║   ██║
- ╚══════╝╚═╝  ╚═╝   ╚═╝     ╚═╝       ╚═╝     ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝   ╚═╝
+ ██║     ███████║    ██╔╝ ╚████╔╝     ██████╔╝██████╔╝██║██╔██╗ ██║   ██║   
+ ██║     ██╔══██║   ██╔╝   ╚██╔╝      ██╔═══╝ ██╔══██╗██║██║╚██╗██║   ██║   
+ ███████╗██║  ██║   ██║     ██║       ██║     ██║  ██║██║██║ ╚████║   ██║   
+ ╚══════╝╚═╝  ╚═╝   ╚═╝     ╚═╝       ╚═╝     ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝   ╚═╝   
 ```
 
-### 🖨️ _Cara cepat print semua dokumen — tanpa drama, tanpa ribet_
+### 🖨️ *Cara cepat print semua dokumen — tanpa drama, tanpa ribet*
 
 <br>
 
@@ -97,20 +98,20 @@ Senin pagi. 47 dokumen. Deadline 5 menit lagi.
 
 ## ✨ Fitur
 
-| Fitur                      | Status | Keterangan                                    |
-| -------------------------- | ------ | --------------------------------------------- |
-| 🗂️ **Drag & Drop**         | ✅     | Drop banyak file sekaligus                    |
-| 🖨️ **Auto-detect Printer** | ✅     | Default printer otomatis terpilih             |
-| 📄 **PDF Silent Print**    | ✅     | Via Ghostscript — tanpa buka apapun           |
-| 📝 **Word / Excel / PPT**  | ✅     | Via COM Automation — invisible di background  |
-| 🖼️ **Image Print**         | ✅     | PNG, JPG, BMP via .NET PrintDocument          |
-| 📋 **TXT Print**           | ✅     | Via PowerShell Out-Printer                    |
-| 🔢 **Page Range**          | ✅     | Print halaman tertentu saja                   |
-| 👁️ **PDF Preview**         | ✅     | Preview per halaman sebelum print             |
-| 📜 **Print History**       | ✅     | Log semua aktivitas print tersimpan           |
-| 🔍 **Search History**      | ✅     | Cari berdasarkan nama file / printer          |
-| 📊 **Live Progress**       | ✅     | Real-time status per dokumen                  |
-| 🌙 **Dark Mode**           | ✅     | Dark by default, karena siapa yang mau terang |
+| Fitur | Status | Keterangan |
+|-------|--------|-----------|
+| 🗂️ **Drag & Drop** | ✅ | Drop banyak file sekaligus |
+| 🖨️ **Auto-detect Printer** | ✅ | Default printer otomatis terpilih |
+| 📄 **PDF Silent Print** | ✅ | Via Ghostscript — tanpa buka apapun |
+| 📝 **Word / Excel / PPT** | ✅ | Via COM Automation — invisible di background |
+| 🖼️ **Image Print** | ✅ | PNG, JPG, BMP via .NET PrintDocument |
+| 📋 **TXT Print** | ✅ | Via PowerShell Out-Printer |
+| 🔢 **Page Range** | ✅ | Print halaman tertentu saja |
+| 👁️ **PDF Preview** | ✅ | Preview per halaman sebelum print |
+| 📜 **Print History** | ✅ | Log semua aktivitas print tersimpan |
+| 🔍 **Search History** | ✅ | Cari berdasarkan nama file / printer |
+| 📊 **Live Progress** | ✅ | Real-time status per dokumen |
+| 🌙 **Dark Mode** | ✅ | Dark by default, karena siapa yang mau terang |
 
 ---
 
@@ -138,23 +139,6 @@ npm install
 
 # Jalankan!
 npm start
-
-```
-
-### electron
-
-```bash
-# Install electron-builder dulu
-npm install --save-dev electron-builder
-
-# Build untuk Windows
-npx electron-builder --win
-
-# Build untuk Mac
-npx electron-builder --mac
-
-# Build untuk Linux
-npx electron-builder --linux
 ```
 
 Selesai. Semudah itu.
@@ -223,7 +207,6 @@ v2.0  📋  Network printer discovery
 ## 🐛 Troubleshooting
 
 **PDF tidak terprint?**
-
 ```
 1. Pastikan Ghostscript terinstall
 2. Cek badge di titlebar — harus hijau "● GS OK"
@@ -231,7 +214,6 @@ v2.0  📋  Network printer discovery
 ```
 
 **Printer tidak terdeteksi?**
-
 ```
 1. Pastikan printer sudah diinstall di Windows
 2. Cek Control Panel → Devices and Printers
@@ -239,7 +221,6 @@ v2.0  📋  Network printer discovery
 ```
 
 **Word/Excel/PPT gagal?**
-
 ```
 1. Pastikan Microsoft Office terinstall
 2. Tutup semua instance Word/Excel yang sedang terbuka
