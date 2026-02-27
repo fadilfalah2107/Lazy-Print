@@ -141,7 +141,7 @@ npm start
 
 ```
 
-### jangan lupa install electron nya juga
+### electron
 
 ```bash
 # Install electron-builder dulu
