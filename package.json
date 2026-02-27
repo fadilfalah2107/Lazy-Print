@@ -1,0 +1,18 @@
+{
+  "name": "print-conductor",
+  "version": "1.0.0",
+  "description": "Batch document printing application",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^40.6.1"
+  },
+  "dependencies": {
+    "pdf-to-printer": "^5.7.0"
+  }
+}

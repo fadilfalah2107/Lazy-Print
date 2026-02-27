@@ -1,0 +1,2338 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Lazy Print</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      :root {
+        --bg: #0a0a0f;
+        --surface: #111118;
+        --surface2: #16161f;
+        --surface3: #1c1c28;
+        --border: #2a2a3a;
+        --border2: #3a3a52;
+        --accent: #ff6b35;
+        --accent2: #ff9a6c;
+        --accent-glow: rgba(255, 107, 53, 0.3);
+        --text: #e8e8f0;
+        --text2: #9898b8;
+        --text3: #5a5a7a;
+        --success: #3cffa0;
+        --error: #ff4d6d;
+        --warning: #ffd93d;
+        --info: #5bc8ff;
+        --mono: "Space Mono", monospace;
+        --sans: "Syne", sans-serif;
+      }
+      html,
+      body {
+        height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        overflow: hidden;
+        user-select: none;
+      }
+
+      /* TITLEBAR */
+      .titlebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 46px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        -webkit-app-region: drag;
+        z-index: 1000;
+      }
+      .titlebar-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 800;
+        font-size: 14px;
+        letter-spacing: 0.05em;
+      }
+      .titlebar-logo .icon {
+        width: 26px;
+        height: 26px;
+        background: var(--accent);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .titlebar-logo .icon svg {
+        fill: white;
+      }
+      .logo-text span {
+        color: var(--accent);
+      }
+      .titlebar-spacer {
+        flex: 1;
+      }
+      .dep-badge {
+        font-family: var(--mono);
+        font-size: 9px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        letter-spacing: 0.1em;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .dep-ok {
+        background: rgba(60, 255, 160, 0.1);
+        color: var(--success);
+        border: 1px solid rgba(60, 255, 160, 0.3);
+      }
+      .dep-warn {
+        background: rgba(255, 217, 61, 0.1);
+        color: var(--warning);
+        border: 1px solid rgba(255, 217, 61, 0.3);
+        animation: warnPulse 2s infinite;
+      }
+      @keyframes warnPulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.6;
+        }
+      }
+      .titlebar-controls {
+        display: flex;
+        gap: 8px;
+        -webkit-app-region: no-drag;
+        margin-left: 12px;
+      }
+      .titlebar-btn {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        transition: opacity 0.2s;
+      }
+      .titlebar-btn:hover {
+        opacity: 0.75;
+      }
+      .btn-close {
+        background: #ff5f57;
+      }
+      .btn-min {
+        background: #ffbd2e;
+      }
+      .btn-max {
+        background: #28ca41;
+      }
+
+      /* LAYOUT */
+      .app {
+        display: flex;
+        height: 100vh;
+        padding-top: 46px;
+      }
+
+      /* TABS */
+      .tab-bar {
+        display: flex;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+        padding: 0 20px;
+        gap: 4px;
+      }
+      .tab {
+        padding: 10px 16px;
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        color: var(--text3);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.15s;
+        margin-bottom: -1px;
+      }
+      .tab:hover {
+        color: var(--text2);
+      }
+      .tab.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+      }
+      .tab-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        background: var(--accent);
+        color: white;
+        border-radius: 50%;
+        font-size: 8px;
+        margin-left: 6px;
+      }
+
+      /* LEFT PANEL */
+      .left-panel {
+        width: 300px;
+        min-width: 260px;
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .panel-section {
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--border);
+      }
+      .section-label {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--text3);
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+      }
+
+      /* PRINTER */
+      .printer-select {
+        width: 100%;
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 11px;
+        padding: 9px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        outline: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%235a5a7a'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        transition: border-color 0.2s;
+      }
+      .printer-select:hover,
+      .printer-select:focus {
+        border-color: var(--accent);
+      }
+      .printer-select option {
+        background: var(--surface2);
+      }
+      .printer-indicator {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .printer-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--success);
+        box-shadow: 0 0 6px var(--success);
+        animation: pulse 2s infinite;
+      }
+      .printer-dot.offline {
+        background: var(--error);
+        box-shadow: 0 0 6px var(--error);
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+      .printer-status-text {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text3);
+      }
+
+      /* SETTINGS */
+      .settings-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+      .settings-row:last-child {
+        margin-bottom: 0;
+      }
+      .settings-key {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text2);
+      }
+      .spin-btn {
+        width: 24px;
+        height: 24px;
+        background: var(--surface3);
+        border: 1px solid var(--border2);
+        color: var(--text);
+        font-size: 14px;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+        font-family: var(--mono);
+      }
+      .spin-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .spin-value {
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--accent);
+        min-width: 24px;
+        text-align: center;
+      }
+      .toggle-group {
+        display: flex;
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .toggle-btn {
+        padding: 5px 10px;
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        color: var(--text3);
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        transition: all 0.15s;
+      }
+      .toggle-btn.active {
+        background: var(--accent);
+        color: white;
+      }
+
+      /* PAGE RANGE */
+      .range-inputs {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .range-input {
+        width: 52px;
+        background: var(--surface3);
+        border: 1px solid var(--border2);
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 11px;
+        padding: 5px 8px;
+        border-radius: 6px;
+        outline: none;
+        text-align: center;
+        transition: border-color 0.2s;
+      }
+      .range-input:focus {
+        border-color: var(--accent);
+      }
+      .range-input:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .range-sep {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text3);
+      }
+      .range-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+      }
+      .range-checkbox {
+        width: 14px;
+        height: 14px;
+        accent-color: var(--accent);
+      }
+
+      /* STATS */
+      .queue-stats {
+        padding: 14px 18px;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+      }
+      .stat-card {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+      }
+      .stat-num {
+        font-family: var(--mono);
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--accent);
+        line-height: 1;
+        margin-bottom: 3px;
+      }
+      .stat-label {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--text3);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      /* PRINT BTN */
+      .print-section {
+        padding: 14px 18px;
+        margin-top: auto;
+        border-top: 1px solid var(--border);
+      }
+      .btn-print {
+        width: 100%;
+        padding: 13px;
+        background: var(--accent);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        font-family: var(--sans);
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: all 0.2s;
+        position: relative;
+        overflow: hidden;
+      }
+      .btn-print::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        );
+      }
+      .btn-print:hover:not(:disabled) {
+        background: var(--accent2);
+        transform: translateY(-1px);
+        box-shadow: 0 8px 24px var(--accent-glow);
+      }
+      .btn-print:disabled {
+        background: var(--surface3);
+        color: var(--text3);
+        cursor: not-allowed;
+      }
+      .btn-print svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
+      }
+      .btn-clear {
+        width: 100%;
+        margin-top: 6px;
+        padding: 7px;
+        background: transparent;
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        color: var(--text3);
+        font-family: var(--mono);
+        font-size: 10px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .btn-clear:hover {
+        border-color: var(--error);
+        color: var(--error);
+      }
+
+      /* RIGHT PANEL */
+      .right-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .tab-content {
+        display: none;
+        flex: 1;
+        overflow: hidden;
+        flex-direction: column;
+      }
+      .tab-content.active {
+        display: flex;
+      }
+
+      /* QUEUE TAB */
+      .drop-toolbar {
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+      }
+      .btn-add-files {
+        padding: 7px 14px;
+        background: var(--surface3);
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        transition: all 0.15s;
+      }
+      .btn-add-files:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .toolbar-divider {
+        width: 1px;
+        height: 20px;
+        background: var(--border);
+      }
+      .toolbar-info {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--text3);
+        letter-spacing: 0.1em;
+      }
+      .toolbar-spacer {
+        flex: 1;
+      }
+      .sort-btn {
+        padding: 5px 10px;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text3);
+        font-family: var(--mono);
+        font-size: 9px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .sort-btn:hover {
+        border-color: var(--border2);
+        color: var(--text2);
+      }
+
+      /* DROP ZONE */
+      .drop-zone {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        position: relative;
+      }
+      .drop-zone::-webkit-scrollbar {
+        width: 4px;
+      }
+      .drop-zone::-webkit-scrollbar-thumb {
+        background: var(--border2);
+        border-radius: 2px;
+      }
+      .drop-empty {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        pointer-events: none;
+      }
+      .drop-empty.hidden {
+        display: none;
+      }
+      .drop-icon {
+        width: 72px;
+        height: 72px;
+        border: 2px dashed var(--border2);
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .drop-icon svg {
+        fill: var(--text3);
+        width: 32px;
+        height: 32px;
+      }
+      .drop-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text2);
+      }
+      .drop-sub {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text3);
+        text-align: center;
+        line-height: 1.7;
+      }
+      .drop-formats {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .fmt-badge {
+        padding: 2px 7px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--text3);
+        letter-spacing: 0.1em;
+      }
+
+      /* FILE LIST */
+      .file-list {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .file-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        transition: all 0.15s;
+        animation: slideIn 0.2s ease;
+        cursor: pointer;
+      }
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .file-item:hover {
+        border-color: var(--border2);
+        background: var(--surface2);
+      }
+      .file-item.selected {
+        border-color: var(--accent);
+        background: rgba(255, 107, 53, 0.05);
+      }
+      .file-item.printing {
+        border-color: var(--warning);
+      }
+      .file-item.done {
+        border-color: var(--success);
+        opacity: 0.65;
+      }
+      .file-item.error {
+        border-color: var(--error);
+      }
+      .file-type-badge {
+        width: 34px;
+        height: 34px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--mono);
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        flex-shrink: 0;
+        text-transform: uppercase;
+      }
+      .badge-pdf {
+        background: rgba(255, 77, 109, 0.15);
+        color: #ff4d6d;
+        border: 1px solid rgba(255, 77, 109, 0.3);
+      }
+      .badge-doc,
+      .badge-docx {
+        background: rgba(60, 120, 255, 0.15);
+        color: #3c78ff;
+        border: 1px solid rgba(60, 120, 255, 0.3);
+      }
+      .badge-xls,
+      .badge-xlsx {
+        background: rgba(60, 255, 160, 0.15);
+        color: #3cffa0;
+        border: 1px solid rgba(60, 255, 160, 0.3);
+      }
+      .badge-ppt,
+      .badge-pptx {
+        background: rgba(255, 150, 50, 0.15);
+        color: #ff9632;
+        border: 1px solid rgba(255, 150, 50, 0.3);
+      }
+      .badge-txt {
+        background: rgba(150, 150, 200, 0.15);
+        color: #9898c8;
+        border: 1px solid rgba(150, 150, 200, 0.3);
+      }
+      .badge-img,
+      .badge-png,
+      .badge-jpg,
+      .badge-jpeg,
+      .badge-bmp {
+        background: rgba(200, 100, 255, 0.15);
+        color: #c864ff;
+        border: 1px solid rgba(200, 100, 255, 0.3);
+      }
+      .badge-other {
+        background: var(--surface3);
+        color: var(--text3);
+        border: 1px solid var(--border);
+      }
+      .file-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .file-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 2px;
+      }
+      .file-meta {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .file-size {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--text3);
+      }
+      .file-pages {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--info);
+      }
+      .file-range {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--accent);
+      }
+      .file-status {
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.1em;
+        padding: 2px 7px;
+        border-radius: 4px;
+        flex-shrink: 0;
+      }
+      .status-queue {
+        background: var(--surface3);
+        color: var(--text3);
+      }
+      .status-printing {
+        background: rgba(255, 217, 61, 0.15);
+        color: var(--warning);
+      }
+      .status-done {
+        background: rgba(60, 255, 160, 0.15);
+        color: var(--success);
+      }
+      .status-error {
+        background: rgba(255, 77, 109, 0.15);
+        color: var(--error);
+      }
+      .file-actions {
+        display: flex;
+        gap: 3px;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+      .file-item:hover .file-actions {
+        opacity: 1;
+      }
+      .file-action-btn {
+        width: 26px;
+        height: 26px;
+        background: var(--surface3);
+        border: 1px solid var(--border2);
+        border-radius: 5px;
+        color: var(--text3);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+        font-size: 11px;
+      }
+      .file-action-btn:hover {
+        border-color: var(--error);
+        color: var(--error);
+      }
+      .file-action-btn.preview-btn:hover {
+        border-color: var(--info);
+        color: var(--info);
+      }
+
+      /* PREVIEW PANEL */
+      .preview-panel {
+        width: 300px;
+        background: var(--surface);
+        border-left: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .preview-panel.collapsed {
+        width: 0;
+        border: none;
+        overflow: hidden;
+      }
+      .preview-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .preview-title {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.15em;
+        color: var(--text3);
+        text-transform: uppercase;
+      }
+      .preview-close {
+        background: none;
+        border: none;
+        color: var(--text3);
+        cursor: pointer;
+        font-size: 14px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        transition: color 0.15s;
+      }
+      .preview-close:hover {
+        color: var(--text);
+      }
+      .preview-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .preview-img-wrap {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 200px;
+      }
+      .preview-img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .preview-loading {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text3);
+        text-align: center;
+        padding: 40px 0;
+      }
+      .preview-nav {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+      .preview-nav-btn {
+        padding: 5px 12px;
+        background: var(--surface3);
+        border: 1px solid var(--border2);
+        border-radius: 6px;
+        color: var(--text2);
+        font-family: var(--mono);
+        font-size: 10px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .preview-nav-btn:hover:not(:disabled) {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .preview-nav-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      .preview-page-info {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text3);
+      }
+      .preview-file-name {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--text3);
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* HISTORY TAB */
+      .history-toolbar {
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+      }
+      .history-search {
+        flex: 1;
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 11px;
+        padding: 7px 12px;
+        border-radius: 8px;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      .history-search:focus {
+        border-color: var(--accent);
+      }
+      .btn-clear-history {
+        padding: 7px 12px;
+        background: transparent;
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        color: var(--text3);
+        font-family: var(--mono);
+        font-size: 10px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .btn-clear-history:hover {
+        border-color: var(--error);
+        color: var(--error);
+      }
+      .history-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .history-list::-webkit-scrollbar {
+        width: 4px;
+      }
+      .history-list::-webkit-scrollbar-thumb {
+        background: var(--border2);
+        border-radius: 2px;
+      }
+      .history-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        gap: 12px;
+        color: var(--text3);
+      }
+      .history-empty svg {
+        fill: var(--text3);
+        opacity: 0.3;
+      }
+      .history-empty p {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+      }
+      .history-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        transition: all 0.15s;
+        animation: slideIn 0.2s ease;
+      }
+      .history-item:hover {
+        border-color: var(--border2);
+        background: var(--surface2);
+      }
+      .history-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .history-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 3px;
+      }
+      .history-meta {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .history-tag {
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.05em;
+        padding: 1px 6px;
+        border-radius: 3px;
+      }
+      .tag-success {
+        background: rgba(60, 255, 160, 0.1);
+        color: var(--success);
+      }
+      .tag-error {
+        background: rgba(255, 77, 109, 0.1);
+        color: var(--error);
+      }
+      .tag-printer {
+        background: rgba(91, 200, 255, 0.1);
+        color: var(--info);
+      }
+      .tag-time {
+        background: var(--surface3);
+        color: var(--text3);
+      }
+      .history-del-btn {
+        width: 24px;
+        height: 24px;
+        background: transparent;
+        border: none;
+        color: var(--text3);
+        cursor: pointer;
+        font-size: 11px;
+        border-radius: 4px;
+        transition: color 0.15s;
+        opacity: 0;
+      }
+      .history-item:hover .history-del-btn {
+        opacity: 1;
+      }
+      .history-del-btn:hover {
+        color: var(--error);
+      }
+
+      /* DEP MODAL */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 10, 15, 0.85);
+        backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 900;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+      }
+      .modal-overlay.visible {
+        opacity: 1;
+        pointer-events: all;
+      }
+      .modal {
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        border-radius: 16px;
+        padding: 28px;
+        width: 460px;
+        max-width: 90vw;
+      }
+      .modal-title {
+        font-size: 18px;
+        font-weight: 800;
+        margin-bottom: 6px;
+      }
+      .modal-sub {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text3);
+        margin-bottom: 20px;
+        line-height: 1.7;
+      }
+      .dep-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-bottom: 10px;
+      }
+      .dep-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+      .dep-icon.ok {
+        background: rgba(60, 255, 160, 0.15);
+      }
+      .dep-icon.warn {
+        background: rgba(255, 217, 61, 0.15);
+      }
+      .dep-info {
+        flex: 1;
+      }
+      .dep-name {
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 3px;
+      }
+      .dep-desc {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--text3);
+        line-height: 1.5;
+      }
+      .dep-status {
+        font-family: var(--mono);
+        font-size: 9px;
+        padding: 3px 8px;
+        border-radius: 4px;
+      }
+      .dep-link {
+        display: block;
+        margin-top: 6px;
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .modal-close {
+        width: 100%;
+        padding: 10px;
+        background: var(--surface3);
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        color: var(--text2);
+        font-family: var(--mono);
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.15s;
+        margin-top: 8px;
+      }
+      .modal-close:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      /* PROGRESS OVERLAY */
+      .progress-overlay {
+        position: fixed;
+        inset: 46px 0 0;
+        background: rgba(10, 10, 15, 0.92);
+        backdrop-filter: blur(14px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        z-index: 500;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+      }
+      .progress-overlay.visible {
+        opacity: 1;
+        pointer-events: all;
+      }
+      .progress-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 18px;
+        background: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: printerAnim 0.8s ease infinite alternate;
+      }
+      @keyframes printerAnim {
+        from {
+          transform: scale(0.95);
+          box-shadow: 0 0 20px var(--accent-glow);
+        }
+        to {
+          transform: scale(1.05);
+          box-shadow: 0 0 40px var(--accent-glow);
+        }
+      }
+      .progress-icon svg {
+        fill: white;
+        width: 36px;
+        height: 36px;
+      }
+      .progress-title {
+        font-size: 20px;
+        font-weight: 800;
+      }
+      .progress-sub {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text3);
+        text-align: center;
+      }
+      .progress-bar-wrap {
+        width: 300px;
+        height: 4px;
+        background: var(--surface2);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .progress-bar {
+        height: 100%;
+        background: var(--accent);
+        border-radius: 2px;
+        transition: width 0.4s ease;
+        box-shadow: 0 0 8px var(--accent-glow);
+      }
+
+      /* TOAST */
+      .toast-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        z-index: 999;
+      }
+      .toast {
+        padding: 10px 14px;
+        background: var(--surface2);
+        border: 1px solid var(--border2);
+        border-radius: 9px;
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        animation: toastIn 0.3s ease;
+        min-width: 220px;
+        max-width: 300px;
+      }
+      @keyframes toastIn {
+        from {
+          opacity: 0;
+          transform: translateX(16px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      .toast.success {
+        border-color: var(--success);
+      }
+      .toast.error {
+        border-color: var(--error);
+      }
+      .toast.warning {
+        border-color: var(--warning);
+      }
+      .toast-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .toast.success .toast-dot {
+        background: var(--success);
+      }
+      .toast.error .toast-dot {
+        background: var(--error);
+      }
+      .toast.warning .toast-dot {
+        background: var(--warning);
+      }
+
+      body.dragging .drop-zone {
+        outline: 2px dashed var(--accent);
+        outline-offset: -4px;
+        background: rgba(255, 107, 53, 0.03);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- TITLEBAR -->
+    <div class="titlebar">
+      <div class="titlebar-logo">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" width="15" height="15">
+            <path
+              d="M6 2h12v6H6zm0 10h12v10H6zm-2-4a2 2 0 0 0-2 2v6h2v-2h16v2h2v-6a2 2 0 0 0-2-2H4zm14 3a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"
+            />
+          </svg>
+        </div>
+        <span class="logo-text">Lazy<span>Print</span></span>
+      </div>
+      <span
+        style="
+          font-family: var(--mono);
+          font-size: 9px;
+          color: var(--text3);
+          letter-spacing: 0.1em;
+          margin-left: 12px;
+        "
+        >Cara cepat print semua dokumen</span
+      >
+
+      <div class="titlebar-spacer"></div>
+      <span
+        class="dep-badge dep-ok"
+        id="depBadge"
+        onclick="openDepModal()"
+        title="Klik untuk cek dependencies"
+        >● GS OK</span
+      >
+      <div class="titlebar-controls">
+        <button
+          class="titlebar-btn btn-min"
+          onclick="window.electronAPI?.minimizeWindow()"
+        ></button>
+        <button
+          class="titlebar-btn btn-max"
+          onclick="window.electronAPI?.maximizeWindow()"
+        ></button>
+        <button
+          class="titlebar-btn btn-close"
+          onclick="window.electronAPI?.closeWindow()"
+        ></button>
+      </div>
+    </div>
+
+    <!-- APP -->
+    <div class="app">
+      <!-- LEFT PANEL -->
+      <div class="left-panel">
+        <div class="tab-bar">
+          <div class="tab active" onclick="switchLeftTab('controls')">
+            CONTROLS
+          </div>
+        </div>
+
+        <!-- PRINTER -->
+        <div class="panel-section">
+          <div class="section-label">Printer</div>
+          <select class="printer-select" id="printerSelect">
+            <option>Loading...</option>
+          </select>
+          <div class="printer-indicator">
+            <div class="printer-dot" id="printerDot"></div>
+            <span class="printer-status-text" id="printerStatusText"
+              >Ready</span
+            >
+          </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div class="panel-section">
+          <div class="section-label">Print Settings</div>
+          <div class="settings-row">
+            <span class="settings-key">COPIES</span>
+            <div style="display: flex; align-items: center; gap: 6px">
+              <button class="spin-btn" onclick="changeCopies(-1)">−</button>
+              <span class="spin-value" id="copiesVal">1</span>
+              <button class="spin-btn" onclick="changeCopies(1)">+</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span class="settings-key">ORIENTATION</span>
+            <div class="toggle-group">
+              <button
+                class="toggle-btn active"
+                id="orientPort"
+                onclick="setOrientation('portrait')"
+              >
+                PORT
+              </button>
+              <button
+                class="toggle-btn"
+                id="orientLand"
+                onclick="setOrientation('landscape')"
+              >
+                LAND
+              </button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span class="settings-key">COLOR</span>
+            <div class="toggle-group">
+              <button
+                class="toggle-btn active"
+                id="colorColor"
+                onclick="setColor('color')"
+              >
+                COLOR
+              </button>
+              <button class="toggle-btn" id="colorBW" onclick="setColor('bw')">
+                B&W
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PAGE RANGE -->
+        <div class="panel-section">
+          <div class="section-label">Page Range</div>
+          <div class="settings-row" style="margin-bottom: 10px">
+            <label class="range-toggle">
+              <input
+                type="checkbox"
+                class="range-checkbox"
+                id="rangeEnabled"
+                onchange="toggleRange()"
+              />
+              <span class="settings-key">Enable range</span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <span class="settings-key">PAGES</span>
+            <div class="range-inputs">
+              <input
+                type="number"
+                class="range-input"
+                id="pageFrom"
+                placeholder="1"
+                min="1"
+                disabled
+              />
+              <span class="range-sep">—</span>
+              <input
+                type="number"
+                class="range-input"
+                id="pageTo"
+                placeholder="end"
+                min="1"
+                disabled
+              />
+            </div>
+          </div>
+          <div
+            style="
+              margin-top: 6px;
+              font-family: var(--mono);
+              font-size: 9px;
+              color: var(--text3);
+            "
+            id="rangeInfo"
+          >
+            Pilih file PDF untuk lihat jumlah halaman
+          </div>
+        </div>
+
+        <!-- STATS -->
+        <div class="queue-stats">
+          <div class="stat-card">
+            <div class="stat-num" id="statTotal">0</div>
+            <div class="stat-label">Total</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="statDone" style="color: var(--success)">
+              0
+            </div>
+            <div class="stat-label">Done</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="statError" style="color: var(--error)">
+              0
+            </div>
+            <div class="stat-label">Error</div>
+          </div>
+        </div>
+
+        <!-- PRINT BUTTON -->
+        <div class="print-section">
+          <button
+            class="btn-print"
+            id="btnPrint"
+            onclick="startPrint()"
+            disabled
+          >
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M6 2h12v6H6zm0 10h12v10H6zm-2-4a2 2 0 0 0-2 2v6h2v-2h16v2h2v-6a2 2 0 0 0-2-2H4zm14 3a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"
+              />
+            </svg>
+            Print All Documents
+          </button>
+          <button class="btn-clear" onclick="clearAll()">✕ Clear Queue</button>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL -->
+      <div class="right-panel">
+        <div class="tab-bar">
+          <div
+            class="tab active"
+            onclick="switchRightTab('queue')"
+            id="tabQueue"
+          >
+            QUEUE
+            <span class="tab-badge" id="queueBadge" style="display: none"
+              >0</span
+            >
+          </div>
+          <div class="tab" onclick="switchRightTab('history')" id="tabHistory">
+            HISTORY
+            <span class="tab-badge" id="historyBadge" style="display: none"
+              >0</span
+            >
+          </div>
+        </div>
+
+        <!-- QUEUE TAB -->
+        <div
+          class="tab-content active"
+          id="tabContentQueue"
+          style="flex-direction: row"
+        >
+          <div
+            style="
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              overflow: hidden;
+            "
+          >
+            <div class="drop-toolbar">
+              <button class="btn-add-files" onclick="openFileDialog()">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="13"
+                  height="13"
+                  fill="currentColor"
+                >
+                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" />
+                </svg>
+                Add Files
+              </button>
+              <div class="toolbar-divider"></div>
+              <span class="toolbar-info" id="toolbarInfo"
+                >DROP FILES TO QUEUE</span
+              >
+              <div class="toolbar-spacer"></div>
+              <button class="sort-btn" onclick="sortByName()">⇅ Name</button>
+              <button class="sort-btn" onclick="sortByType()">⇅ Type</button>
+            </div>
+            <div class="drop-zone" id="dropZone">
+              <div class="drop-empty" id="dropEmpty">
+                <div class="drop-icon">
+                  <svg viewBox="0 0 24 24">
+                    <path
+                      d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"
+                    />
+                  </svg>
+                </div>
+                <div class="drop-title">Drop Documents Here</div>
+                <div class="drop-sub">Drag & drop atau klik Add Files</div>
+                <div class="drop-formats">
+                  <span class="fmt-badge">PDF</span
+                  ><span class="fmt-badge">DOCX</span
+                  ><span class="fmt-badge">XLSX</span>
+                  <span class="fmt-badge">PPTX</span
+                  ><span class="fmt-badge">TXT</span
+                  ><span class="fmt-badge">IMG</span>
+                </div>
+              </div>
+              <div class="file-list" id="fileList"></div>
+            </div>
+          </div>
+
+          <!-- PREVIEW PANEL -->
+          <div class="preview-panel collapsed" id="previewPanel">
+            <div class="preview-header">
+              <span class="preview-title">// Preview</span>
+              <button class="preview-close" onclick="closePreview()">✕</button>
+            </div>
+            <div class="preview-body" id="previewBody">
+              <div class="preview-loading">Pilih file PDF untuk preview</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- HISTORY TAB -->
+        <div class="tab-content" id="tabContentHistory">
+          <div class="history-toolbar">
+            <input
+              type="text"
+              class="history-search"
+              id="historySearch"
+              placeholder="Cari nama file, printer..."
+              oninput="filterHistory()"
+            />
+            <button class="btn-clear-history" onclick="clearHistory()">
+              🗑 Clear All
+            </button>
+          </div>
+          <div class="history-list" id="historyList">
+            <div class="history-empty">
+              <svg viewBox="0 0 24 24" width="48" height="48">
+                <path
+                  d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"
+                />
+              </svg>
+              <p>Belum ada riwayat print</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEPENDENCY MODAL -->
+    <div class="modal-overlay" id="depModal">
+      <div class="modal">
+        <div class="modal-title">Dependencies</div>
+        <div class="modal-sub">
+          Aplikasi memerlukan tools berikut untuk print PDF tanpa membuka file
+        </div>
+        <div id="depModalContent"></div>
+        <button class="modal-close" onclick="closeDepModal()">Tutup</button>
+      </div>
+    </div>
+
+    <!-- PROGRESS OVERLAY -->
+    <div class="progress-overlay" id="progressOverlay">
+      <div class="progress-icon">
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M6 2h12v6H6zm0 10h12v10H6zm-2-4a2 2 0 0 0-2 2v6h2v-2h16v2h2v-6a2 2 0 0 0-2-2H4zm14 3a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"
+          />
+        </svg>
+      </div>
+      <div class="progress-title">Sending to Printer</div>
+      <div class="progress-sub" id="progressSub">Preparing...</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+      // ===== STATE =====
+      const state = {
+        files: [],
+        printer: "",
+        copies: 1,
+        orientation: "portrait",
+        color: "color",
+        printing: false,
+        rangeEnabled: false,
+        pageFrom: null,
+        pageTo: null,
+        history: [],
+        historyFiltered: [],
+        previewFile: null,
+        previewPage: 1,
+        previewTotalPages: null,
+        deps: { ghostscript: null, sumatrapdf: null },
+      };
+
+      // ===== INIT =====
+      async function init() {
+        await Promise.all([loadPrinters(), checkDeps(), loadHistory()]);
+        setupDragDrop();
+      }
+
+      // ===== DEPS =====
+      async function checkDeps() {
+        try {
+          if (window.electronAPI) {
+            state.deps = await window.electronAPI.checkDependencies();
+          } else {
+            state.deps = { ghostscript: "demo", sumatrapdf: null };
+          }
+        } catch (e) {}
+        updateDepBadge();
+      }
+
+      function updateDepBadge() {
+        const badge = document.getElementById("depBadge");
+        if (state.deps.ghostscript) {
+          badge.className = "dep-badge dep-ok";
+          badge.textContent = "● GS OK";
+          badge.title = "Ghostscript terdeteksi";
+        } else if (state.deps.sumatrapdf) {
+          badge.className = "dep-badge dep-ok";
+          badge.textContent = "● SUMATRA OK";
+          badge.title = "SumatraPDF terdeteksi";
+        } else {
+          badge.className = "dep-badge dep-warn";
+          badge.textContent = "⚠ PDF ENGINE";
+          badge.title = "Tidak ada PDF engine — klik untuk info";
+        }
+      }
+
+      function openDepModal() {
+        const gs = state.deps.ghostscript;
+        const su = state.deps.sumatrapdf;
+        document.getElementById("depModalContent").innerHTML = `
+    <div class="dep-item">
+      <div class="dep-icon ${gs ? "ok" : "warn"}">${gs ? "✓" : "!"}</div>
+      <div class="dep-info">
+        <div class="dep-name">Ghostscript</div>
+        <div class="dep-desc">Engine PDF utama. Print langsung ke printer<br>tanpa buka UI apapun (recommended)</div>
+        ${gs ? `<div class="dep-status tag-success">Terdeteksi: ${gs}</div>` : `<a class="dep-link" href="https://www.ghostscript.com/releases/gsdnld.html" target="_blank">↗ Download Ghostscript (gratis)</a>`}
+      </div>
+    </div>
+    <div class="dep-item">
+      <div class="dep-icon ${su ? "ok" : "warn"}">${su ? "✓" : "–"}</div>
+      <div class="dep-info">
+        <div class="dep-name">SumatraPDF</div>
+        <div class="dep-desc">Fallback jika Ghostscript tidak ada.<br>Ringan & gratis</div>
+        ${su ? `<div class="dep-status tag-success">Terdeteksi: ${su}</div>` : `<a class="dep-link" href="https://www.sumatrapdfreader.org" target="_blank">↗ Download SumatraPDF (gratis)</a>`}
+      </div>
+    </div>`;
+        document.getElementById("depModal").classList.add("visible");
+      }
+      function closeDepModal() {
+        document.getElementById("depModal").classList.remove("visible");
+      }
+
+      // ===== PRINTERS =====
+      async function loadPrinters() {
+        const sel = document.getElementById("printerSelect");
+        sel.innerHTML = "<option>Loading...</option>";
+        try {
+          let printers = window.electronAPI
+            ? await window.electronAPI.getPrinters()
+            : [
+                { name: "HP LaserJet Pro M404n", isDefault: true },
+                { name: "Canon PIXMA G3010", isDefault: false },
+                { name: "Microsoft Print to PDF", isDefault: false },
+              ];
+          sel.innerHTML = "";
+          printers.forEach((p) => {
+            const o = document.createElement("option");
+            o.value = p.name;
+            o.textContent = p.isDefault ? `${p.name} (Default)` : p.name;
+            if (p.isDefault) o.selected = true;
+            sel.appendChild(o);
+          });
+          state.printer = sel.value;
+          updatePrinterStatus(!!sel.value);
+        } catch (e) {
+          sel.innerHTML = "<option>No printers found</option>";
+          updatePrinterStatus(false);
+        }
+        sel.onchange = () => {
+          state.printer = sel.value;
+          updatePrinterStatus(!!sel.value);
+        };
+      }
+
+      function updatePrinterStatus(ok) {
+        document.getElementById("printerDot").className =
+          "printer-dot" + (ok ? "" : " offline");
+        document.getElementById("printerStatusText").textContent = ok
+          ? "Ready to print"
+          : "No printer selected";
+      }
+
+      // ===== DRAG & DROP =====
+      function setupDragDrop() {
+        document.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          document.body.classList.add("dragging");
+        });
+        document.addEventListener("dragleave", (e) => {
+          if (!e.relatedTarget) document.body.classList.remove("dragging");
+        });
+        document.addEventListener("drop", async (e) => {
+          e.preventDefault();
+          document.body.classList.remove("dragging");
+          const files = Array.from(e.dataTransfer.files);
+          if (files.length) await addFiles(files.map((f) => f.path || f.name));
+        });
+      }
+
+      // ===== FILE OPERATIONS =====
+      async function openFileDialog() {
+        try {
+          let paths = [];
+          if (window.electronAPI) {
+            paths = await window.electronAPI.openFileDialog();
+          } else {
+            paths = [
+              "/demo/document.pdf",
+              "/demo/report.docx",
+              "/demo/data.xlsx",
+            ];
+          }
+          if (paths.length) await addFiles(paths);
+        } catch (e) {
+          showToast("Gagal membuka file dialog", "error");
+        }
+      }
+
+      async function addFiles(paths) {
+        const newPaths = paths.filter(
+          (p) => !state.files.find((f) => f.path === p),
+        );
+        for (const filePath of newPaths) {
+          let info;
+          if (window.electronAPI) {
+            info = await window.electronAPI.getFileInfo(filePath);
+          } else {
+            const name = filePath.split(/[\\/]/).pop();
+            const ext = name.split(".").pop().toLowerCase();
+            info = {
+              name,
+              path: filePath,
+              size: Math.floor(Math.random() * 5000000),
+              ext,
+            };
+          }
+          if (info) {
+            const file = {
+              ...info,
+              status: "queue",
+              id: Date.now() + Math.random(),
+              pageFrom: null,
+              pageTo: null,
+              totalPages: null,
+            };
+            state.files.push(file);
+            // Auto-fetch page count untuk PDF
+            if (info.ext === "pdf" && window.electronAPI) {
+              window.electronAPI
+                .getPdfPages(info.path)
+                .then((pages) => {
+                  file.totalPages = pages;
+                  renderFileList();
+                })
+                .catch(() => {});
+            }
+          }
+        }
+        renderFileList();
+        updateStats();
+        updatePrintButton();
+      }
+
+      function removeFile(id) {
+        state.files = state.files.filter((f) => f.id !== id);
+        if (state.previewFile && state.previewFile.id === id) closePreview();
+        renderFileList();
+        updateStats();
+        updatePrintButton();
+      }
+
+      function clearAll() {
+        state.files = [];
+        closePreview();
+        renderFileList();
+        updateStats();
+        updatePrintButton();
+      }
+
+      // ===== RENDER =====
+      function renderFileList() {
+        const list = document.getElementById("fileList");
+        const empty = document.getElementById("dropEmpty");
+        if (state.files.length === 0) {
+          list.innerHTML = "";
+          empty.classList.remove("hidden");
+          return;
+        }
+        empty.classList.add("hidden");
+        list.innerHTML = state.files
+          .map(
+            (f) => `
+    <div class="file-item ${f.status !== "queue" ? f.status : ""} ${state.previewFile?.id === f.id ? "selected" : ""}" id="fi-${f.id}" onclick="selectFile(${f.id})">
+      <div class="file-type-badge ${getBadgeClass(f.ext)}">${f.ext}</div>
+      <div class="file-info">
+        <div class="file-name">${f.name}</div>
+        <div class="file-meta">
+          <span class="file-size">${fmtSize(f.size)}</span>
+          ${f.totalPages ? `<span class="file-pages">📄 ${f.totalPages}p</span>` : ""}
+          ${f.pageFrom && f.pageTo ? `<span class="file-range">p.${f.pageFrom}–${f.pageTo}</span>` : ""}
+        </div>
+      </div>
+      <span class="file-status ${getStatusClass(f.status)}">${f.status.toUpperCase()}</span>
+      <div class="file-actions">
+        ${f.ext === "pdf" ? `<button class="file-action-btn preview-btn" title="Preview" onclick="event.stopPropagation();openPreview(${f.id})">👁</button>` : ""}
+        <button class="file-action-btn" title="Remove" onclick="event.stopPropagation();removeFile(${f.id})">✕</button>
+      </div>
+    </div>`,
+          )
+          .join("");
+      }
+
+      function getBadgeClass(ext) {
+        const m = {
+          pdf: "badge-pdf",
+          doc: "badge-doc",
+          docx: "badge-docx",
+          xls: "badge-xls",
+          xlsx: "badge-xlsx",
+          ppt: "badge-ppt",
+          pptx: "badge-pptx",
+          txt: "badge-txt",
+          png: "badge-img",
+          jpg: "badge-img",
+          jpeg: "badge-img",
+          bmp: "badge-img",
+        };
+        return m[ext] || "badge-other";
+      }
+      function getStatusClass(s) {
+        return (
+          {
+            queue: "status-queue",
+            printing: "status-printing",
+            done: "status-done",
+            error: "status-error",
+          }[s] || "status-queue"
+        );
+      }
+      function fmtSize(b) {
+        if (!b) return "—";
+        if (b < 1024) return b + "B";
+        if (b < 1048576) return (b / 1024).toFixed(1) + "KB";
+        return (b / 1048576).toFixed(1) + "MB";
+      }
+
+      function updateStats() {
+        document.getElementById("statTotal").textContent = state.files.length;
+        document.getElementById("statDone").textContent = state.files.filter(
+          (f) => f.status === "done",
+        ).length;
+        document.getElementById("statError").textContent = state.files.filter(
+          (f) => f.status === "error",
+        ).length;
+        const qb = document.getElementById("queueBadge");
+        qb.textContent = state.files.length;
+        qb.style.display = state.files.length > 0 ? "inline-flex" : "none";
+        document.getElementById("toolbarInfo").textContent =
+          state.files.length > 0
+            ? `${state.files.length} FILE${state.files.length > 1 ? "S" : ""} IN QUEUE`
+            : "DROP FILES TO QUEUE";
+      }
+
+      function updatePrintButton() {
+        document.getElementById("btnPrint").disabled =
+          state.files.length === 0 || !state.printer || state.printing;
+      }
+
+      // ===== SELECT FILE =====
+      function selectFile(id) {
+        const file = state.files.find((f) => f.id === id);
+        if (!file) return;
+        if (file.ext === "pdf") openPreview(id);
+        // Update range info
+        if (file.totalPages)
+          document.getElementById("rangeInfo").textContent =
+            `File ini memiliki ${file.totalPages} halaman`;
+      }
+
+      // ===== PREVIEW =====
+      async function openPreview(id) {
+        const file = state.files.find((f) => f.id === id);
+        if (!file || file.ext !== "pdf") return;
+        state.previewFile = file;
+        state.previewPage = 1;
+        state.previewTotalPages = file.totalPages;
+        document.getElementById("previewPanel").classList.remove("collapsed");
+        renderFileList();
+        await loadPreviewPage();
+      }
+
+      function closePreview() {
+        state.previewFile = null;
+        document.getElementById("previewPanel").classList.add("collapsed");
+        renderFileList();
+      }
+
+      async function loadPreviewPage() {
+        const body = document.getElementById("previewBody");
+        if (!state.previewFile) return;
+        body.innerHTML = `
+    <div class="preview-file-name">${state.previewFile.name}</div>
+    <div class="preview-img-wrap"><div class="preview-loading">Generating preview...</div></div>
+    <div class="preview-nav">
+      <button class="preview-nav-btn" onclick="previewPrev()" ${state.previewPage <= 1 ? "disabled" : ""}>◀ Prev</button>
+      <span class="preview-page-info">${state.previewPage} / ${state.previewTotalPages || "?"}</span>
+      <button class="preview-nav-btn" onclick="previewNext()" ${state.previewTotalPages && state.previewPage >= state.previewTotalPages ? "disabled" : ""}>Next ▶</button>
+    </div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text3);text-align:center">Klik halaman untuk set page range</div>`;
+
+        try {
+          let imgSrc = null;
+          if (window.electronAPI) {
+            imgSrc = await window.electronAPI.getPdfPreview({
+              filePath: state.previewFile.path,
+              page: state.previewPage,
+            });
+          } else {
+            imgSrc = null; // demo
+          }
+
+          const wrap = body.querySelector(".preview-img-wrap");
+          if (imgSrc) {
+            wrap.innerHTML = `<img class="preview-img" src="${imgSrc}" alt="Page ${state.previewPage}">`;
+          } else {
+            wrap.innerHTML = `<div class="preview-loading">Preview memerlukan<br>Ghostscript</div>`;
+          }
+        } catch (e) {
+          body.querySelector(".preview-img-wrap").innerHTML =
+            `<div class="preview-loading">Gagal load preview</div>`;
+        }
+      }
+
+      function previewPrev() {
+        if (state.previewPage > 1) {
+          state.previewPage--;
+          loadPreviewPage();
+        }
+      }
+      function previewNext() {
+        if (
+          !state.previewTotalPages ||
+          state.previewPage < state.previewTotalPages
+        ) {
+          state.previewPage++;
+          loadPreviewPage();
+        }
+      }
+
+      // ===== PAGE RANGE =====
+      function toggleRange() {
+        state.rangeEnabled = document.getElementById("rangeEnabled").checked;
+        document.getElementById("pageFrom").disabled = !state.rangeEnabled;
+        document.getElementById("pageTo").disabled = !state.rangeEnabled;
+        if (!state.rangeEnabled) {
+          state.pageFrom = null;
+          state.pageTo = null;
+        }
+      }
+
+      // ===== SETTINGS =====
+      function changeCopies(d) {
+        state.copies = Math.max(1, Math.min(99, state.copies + d));
+        document.getElementById("copiesVal").textContent = state.copies;
+      }
+      function setOrientation(v) {
+        state.orientation = v;
+        document
+          .getElementById("orientPort")
+          .classList.toggle("active", v === "portrait");
+        document
+          .getElementById("orientLand")
+          .classList.toggle("active", v === "landscape");
+      }
+      function setColor(v) {
+        state.color = v;
+        document
+          .getElementById("colorColor")
+          .classList.toggle("active", v === "color");
+        document
+          .getElementById("colorBW")
+          .classList.toggle("active", v === "bw");
+      }
+
+      // ===== SORTING =====
+      function sortByName() {
+        state.files.sort((a, b) => a.name.localeCompare(b.name));
+        renderFileList();
+      }
+      function sortByType() {
+        state.files.sort((a, b) => a.ext.localeCompare(b.ext));
+        renderFileList();
+      }
+
+      // ===== TABS =====
+      function switchRightTab(tab) {
+        document
+          .getElementById("tabQueue")
+          .classList.toggle("active", tab === "queue");
+        document
+          .getElementById("tabHistory")
+          .classList.toggle("active", tab === "history");
+        document
+          .getElementById("tabContentQueue")
+          .classList.toggle("active", tab === "queue");
+        document
+          .getElementById("tabContentHistory")
+          .classList.toggle("active", tab === "history");
+      }
+
+      // ===== PRINT =====
+      async function startPrint() {
+        if (state.printing || state.files.length === 0) return;
+        state.printing = true;
+        updatePrintButton();
+
+        const pageFrom = state.rangeEnabled
+          ? parseInt(document.getElementById("pageFrom").value) || null
+          : null;
+        const pageTo = state.rangeEnabled
+          ? parseInt(document.getElementById("pageTo").value) || null
+          : null;
+
+        const overlay = document.getElementById("progressOverlay");
+        overlay.classList.add("visible");
+
+        const filesToPrint = state.files.filter((f) => f.status === "queue");
+        const historyEntries = [];
+        let done = 0;
+
+        for (let i = 0; i < filesToPrint.length; i++) {
+          const file = filesToPrint[i];
+          file.status = "printing";
+          renderFileList();
+          document.getElementById("progressSub").textContent =
+            `[${i + 1}/${filesToPrint.length}] ${file.name}`;
+          document.getElementById("progressBar").style.width =
+            `${(i / filesToPrint.length) * 100}%`;
+
+          const startTime = Date.now();
+          try {
+            if (window.electronAPI) {
+              await window.electronAPI.printFiles({
+                files: [{ path: file.path, pageFrom, pageTo }],
+                printer: state.printer,
+                copies: state.copies,
+                orientation: state.orientation,
+              });
+            } else {
+              await new Promise((r) =>
+                setTimeout(r, 900 + Math.random() * 600),
+              );
+              if (Math.random() > 0.1) {
+                /* success */
+              } else throw new Error("Demo error");
+            }
+            file.status = "done";
+            done++;
+            historyEntries.push({
+              id: Date.now() + Math.random(),
+              name: file.name,
+              path: file.path,
+              ext: file.ext,
+              printer: state.printer,
+              copies: state.copies,
+              pageFrom,
+              pageTo,
+              duration: Date.now() - startTime,
+              success: true,
+            });
+          } catch (err) {
+            file.status = "error";
+            showToast(`✕ ${file.name}: ${err.message}`, "error");
+            historyEntries.push({
+              id: Date.now() + Math.random(),
+              name: file.name,
+              path: file.path,
+              ext: file.ext,
+              printer: state.printer,
+              copies: state.copies,
+              success: false,
+              error: err.message,
+            });
+          }
+          renderFileList();
+          updateStats();
+        }
+
+        document.getElementById("progressBar").style.width = "100%";
+        await new Promise((r) => setTimeout(r, 400));
+        overlay.classList.remove("visible");
+        state.printing = false;
+        updatePrintButton();
+
+        // Simpan history
+        if (historyEntries.length > 0) {
+          if (window.electronAPI) {
+            state.history = await window.electronAPI.addHistory(historyEntries);
+          } else {
+            state.history = [...historyEntries, ...state.history].slice(0, 500);
+          }
+          state.historyFiltered = state.history;
+          renderHistory();
+        }
+
+        const errors = state.files.filter((f) => f.status === "error").length;
+        if (errors === 0)
+          showToast(`✓ ${done} dokumen berhasil dikirim ke printer`, "success");
+        else
+          showToast(
+            `${done} berhasil, ${errors} gagal`,
+            errors > 0 ? "warning" : "success",
+          );
+      }
+
+      // ===== HISTORY =====
+      async function loadHistory() {
+        try {
+          state.history = window.electronAPI
+            ? await window.electronAPI.getHistory()
+            : [];
+        } catch (e) {
+          state.history = [];
+        }
+        state.historyFiltered = state.history;
+        renderHistory();
+      }
+
+      function renderHistory() {
+        const list = document.getElementById("historyList");
+        const hb = document.getElementById("historyBadge");
+        hb.textContent = state.history.length;
+        hb.style.display = state.history.length > 0 ? "inline-flex" : "none";
+
+        if (state.historyFiltered.length === 0) {
+          list.innerHTML = `<div class="history-empty"><svg viewBox="0 0 24 24" width="48" height="48"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg><p>${state.history.length === 0 ? "Belum ada riwayat print" : "Tidak ada hasil pencarian"}</p></div>`;
+          return;
+        }
+
+        list.innerHTML = state.historyFiltered
+          .map((h) => {
+            const ts = h.timestamp
+              ? new Date(h.timestamp).toLocaleString("id-ID", {
+                  day: "2-digit",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "";
+            const dur = h.duration
+              ? ` • ${(h.duration / 1000).toFixed(1)}s`
+              : "";
+            const pageInfo =
+              h.pageFrom && h.pageTo ? ` • p.${h.pageFrom}–${h.pageTo}` : "";
+            return `
+    <div class="history-item">
+      <div class="file-type-badge ${getBadgeClass(h.ext)}">${h.ext || "?"}</div>
+      <div class="history-info">
+        <div class="history-name">${h.name}</div>
+        <div class="history-meta">
+          <span class="history-tag ${h.success ? "tag-success" : "tag-error"}">${h.success ? "✓ OK" : "✕ FAILED"}</span>
+          <span class="history-tag tag-printer">🖨 ${h.printer || "—"}</span>
+          ${h.copies > 1 ? `<span class="history-tag tag-time">×${h.copies}</span>` : ""}
+          ${pageInfo ? `<span class="history-tag tag-time">${pageInfo}</span>` : ""}
+          <span class="history-tag tag-time">${ts}${dur}</span>
+        </div>
+      </div>
+      <button class="history-del-btn" onclick="deleteHistoryItem('${h.id}')" title="Hapus">✕</button>
+    </div>`;
+          })
+          .join("");
+      }
+
+      function filterHistory() {
+        const q = document.getElementById("historySearch").value.toLowerCase();
+        state.historyFiltered = q
+          ? state.history.filter(
+              (h) =>
+                h.name.toLowerCase().includes(q) ||
+                (h.printer || "").toLowerCase().includes(q),
+            )
+          : state.history;
+        renderHistory();
+      }
+
+      async function clearHistory() {
+        if (!confirm("Hapus semua riwayat print?")) return;
+        state.history = window.electronAPI
+          ? await window.electronAPI.clearHistory()
+          : [];
+        state.historyFiltered = [];
+        renderHistory();
+        showToast("Riwayat dihapus", "success");
+      }
+
+      async function deleteHistoryItem(id) {
+        state.history = window.electronAPI
+          ? await window.electronAPI.deleteHistoryItem(id)
+          : state.history.filter((h) => h.id != id);
+        filterHistory();
+      }
+
+      // ===== TOAST =====
+      function showToast(message, type = "success") {
+        const c = document.getElementById("toastContainer");
+        const t = document.createElement("div");
+        t.className = `toast ${type}`;
+        t.innerHTML = `<span class="toast-dot"></span>${message}`;
+        c.appendChild(t);
+        setTimeout(() => {
+          t.style.opacity = "0";
+          t.style.transform = "translateX(16px)";
+          t.style.transition = "all .3s";
+          setTimeout(() => t.remove(), 300);
+        }, 3500);
+      }
+
+      // ===== START =====
+      init();
+    </script>
+  </body>
+</html>
