@@ -16,10 +16,20 @@
 [![Made with Electron](https://img.shields.io/badge/Made%20with-Electron-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://www.electronjs.org)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-orange?style=for-the-badge&logo=windows&logoColor=white)](.)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](.)
-[![Version](https://img.shields.io/badge/Version-1.6.0-ff6b35?style=for-the-badge)](.)
+[![Version](https://img.shields.io/badge/Version-1.7.5-ff6b35?style=for-the-badge)](.)
 [![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen?style=for-the-badge)](.)
 
 <br>
+
+</div>
+
+---
+
+## 📸 Tampilan Aplikasi
+
+<div align="center">
+
+![Tampilan Lazy Print](tampilan%20aplikasi.png)
 
 </div>
 
@@ -226,6 +236,7 @@ v1.5  ✅  Print profiles + watch folder + queue persistence
 v1.6  ✅  System tray · sound notification · undo · recent files ·
           lifetime stats · duplicate detection · keyboard shortcuts baru ·
           PDF export LibreOffice-first
+v1.7  ✅  Trial mode 14 hari + sistem aktivasi lisensi offline
 v2.0  📋  Scheduled print
 v2.1  📋  Network printer discovery
 ```

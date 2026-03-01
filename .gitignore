@@ -6,6 +6,7 @@ dist/
 dist/win-unpacked/
 dist/Print Conductor-win32-x64/
 build/
+tools/
 
 # Scripts
 scripts/
@@ -42,3 +43,7 @@ desktop.ini
 *.temp
 .cache/
 .claude
+
+
+CLAUDE.MD
+
