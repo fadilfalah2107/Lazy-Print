@@ -1,0 +1,63 @@
+{
+  "name": "lazy-print",
+  "version": "1.6.0",
+  "description": "Cara cepat print semua dokumen — tanpa drama, tanpa ribet",
+  "main": "main.js",
+  "author": "Lazy Print",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "predist": "node scripts/generate-icon.js",
+    "dist": "electron-builder --win"
+  },
+  "dependencies": {
+    "pdf-to-printer": "^5.7.0"
+  },
+  "devDependencies": {
+    "electron": "^40.6.1",
+    "electron-builder": "^26.8.1",
+    "electron-installer-windows": "^3.0.0",
+    "electron-packager": "^17.1.2"
+  },
+  "build": {
+    "appId": "com.lazprint.app",
+    "productName": "Lazy Print",
+    "copyright": "Copyright © 2025 Lazy Print",
+    "asar": true,
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "package.json"
+    ],
+    "extraResources": [
+      { "from": "build/icon.ico", "to": "icon.ico" }
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Lazy Print",
+      "deleteAppDataOnUninstall": false
+    },
+    "toolsets": {
+      "winCodeSign": "0.0.0"
+    }
+  }
+}

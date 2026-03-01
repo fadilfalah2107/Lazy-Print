@@ -1,0 +1,2581 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lazy Print — Print Semua Dokumen, Tanpa Drama</title>
+    <meta
+      name="description"
+      content="Aplikasi desktop untuk batch printing dokumen. Drag, drop, print. Sesederhana itu."
+    />
+    <link rel="icon" href="icon.ico" type="image/x-icon" />
+
+    <style>
+      /* ───── Reset & Variables ───── */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg: #0d0d0f;
+        --bg2: #111116;
+        --bg3: #16161d;
+        --surface: rgba(255, 255, 255, 0.04);
+        --border: rgba(255, 255, 255, 0.07);
+        --primary: #ff6b35;
+        --primary2: #ff9a6c;
+        --accent: #7c6dfa;
+        --accent2: #a79bff;
+        --green: #22c55e;
+        --text: #e8e8ec;
+        --muted: #666680;
+        --dim: #38384a;
+        --radius: 14px;
+        --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+        --mono: "Cascadia Code", "Fira Code", "Consolas", monospace;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font);
+        line-height: 1.6;
+        overflow-x: hidden;
+      }
+
+      /* ───── Scrollbar ───── */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--bg);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--dim);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary);
+      }
+
+      /* ───── Noise texture overlay ───── */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+        pointer-events: none;
+        z-index: 1000;
+        opacity: 0.4;
+      }
+
+      /* ───── Gradient blobs ───── */
+      .blob {
+        position: fixed;
+        border-radius: 50%;
+        filter: blur(120px);
+        pointer-events: none;
+        z-index: 0;
+        opacity: 0.12;
+      }
+      .blob-1 {
+        width: 600px;
+        height: 600px;
+        background: var(--primary);
+        top: -200px;
+        left: -150px;
+      }
+      .blob-2 {
+        width: 500px;
+        height: 500px;
+        background: var(--accent);
+        bottom: 10%;
+        right: -100px;
+      }
+      .blob-3 {
+        width: 400px;
+        height: 400px;
+        background: #22d3ee;
+        top: 40%;
+        left: 40%;
+        opacity: 0.06;
+      }
+
+      .footer-logo {
+        gap: 8px;
+      }
+
+      .logo-icon {
+        width: 20px;
+        height: 20px;
+      }
+
+      /* ───── Navbar ───── */
+      nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 900;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 40px;
+        background: rgba(13, 13, 15, 0.7);
+        backdrop-filter: blur(20px) saturate(180%);
+        border-bottom: 1px solid var(--border);
+        transition: all 0.3s;
+      }
+      .nav-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: var(--text);
+        text-decoration: none;
+      }
+      .nav-logo .icon {
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, var(--primary), var(--primary2));
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        font-size: 1rem;
+      }
+      .nav-links {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        list-style: none;
+      }
+      .nav-links a {
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.9rem;
+        padding: 6px 14px;
+        border-radius: 8px;
+        transition: all 0.2s;
+      }
+      .nav-links a:hover {
+        color: var(--text);
+        background: var(--surface);
+      }
+      .nav-cta {
+        background: linear-gradient(
+          135deg,
+          var(--primary),
+          var(--primary2)
+        ) !important;
+        color: #fff !important;
+        font-weight: 600;
+        padding: 8px 18px !important;
+      }
+      .nav-cta:hover {
+        opacity: 0.85;
+        transform: translateY(-1px);
+      }
+
+      /* ───── Sections ───── */
+      section {
+        position: relative;
+        z-index: 1;
+      }
+
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+
+      /* ───── Hero ───── */
+      .hero {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        padding: 120px 24px 80px;
+        text-align: center;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255, 107, 53, 0.1);
+        border: 1px solid rgba(255, 107, 53, 0.25);
+        color: var(--primary2);
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 6px 14px;
+        border-radius: 100px;
+        margin-bottom: 28px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        animation: fadeInDown 0.6s ease both;
+      }
+      .hero-badge .dot {
+        width: 6px;
+        height: 6px;
+        background: var(--primary);
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+
+      .hero h1 {
+        font-size: clamp(3rem, 8vw, 5.5rem);
+        font-weight: 800;
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+        margin-bottom: 24px;
+        animation: fadeInUp 0.7s 0.1s ease both;
+      }
+      .hero h1 span {
+        background: linear-gradient(
+          135deg,
+          var(--primary),
+          var(--primary2),
+          #ffb347
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .hero-sub {
+        font-size: clamp(1rem, 2.5vw, 1.35rem);
+        color: var(--muted);
+        max-width: 600px;
+        margin: 0 auto 40px;
+        animation: fadeInUp 0.7s 0.2s ease both;
+      }
+      .hero-sub em {
+        color: var(--text);
+        font-style: normal;
+        font-weight: 500;
+      }
+
+      .hero-buttons {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        justify-content: center;
+        animation: fadeInUp 0.7s 0.3s ease both;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 28px;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.25s;
+        border: none;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, var(--primary), var(--primary2));
+        color: #fff;
+        box-shadow: 0 4px 30px rgba(255, 107, 53, 0.3);
+      }
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 40px rgba(255, 107, 53, 0.45);
+      }
+      .btn-secondary {
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.07);
+        transform: translateY(-2px);
+      }
+
+      .hero-stats {
+        display: flex;
+        gap: 40px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 64px;
+        animation: fadeInUp 0.7s 0.4s ease both;
+      }
+      .hero-stat {
+        text-align: center;
+      }
+      .hero-stat strong {
+        display: block;
+        font-size: 2rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--primary), var(--primary2));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .hero-stat span {
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      /* ───── Terminal mockup ───── */
+      .terminal-wrap {
+        margin: 70px auto 0;
+        max-width: 680px;
+        animation: fadeInUp 0.8s 0.4s ease both;
+      }
+      .terminal {
+        background: #0a0a0c;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow:
+          0 30px 80px rgba(0, 0, 0, 0.6),
+          0 0 0 1px rgba(255, 255, 255, 0.03);
+      }
+      .terminal-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 18px;
+        background: var(--bg3);
+        border-bottom: 1px solid var(--border);
+      }
+      .dot-red {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #ff5f56;
+      }
+      .dot-yellow {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #ffbd2e;
+      }
+      .dot-green {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #27c93f;
+      }
+      .terminal-title {
+        margin-left: auto;
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-family: var(--mono);
+      }
+      .terminal-body {
+        padding: 24px;
+        font-family: var(--mono);
+        font-size: 0.875rem;
+        line-height: 1.8;
+      }
+      .t-comment {
+        color: #4a4a66;
+      }
+      .t-cmd {
+        color: var(--primary2);
+      }
+      .t-ok {
+        color: var(--green);
+      }
+      .t-wait {
+        color: #fbbf24;
+      }
+      .t-err {
+        color: #f87171;
+      }
+      .t-dim {
+        color: var(--muted);
+      }
+      .t-bold {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .cursor {
+        display: inline-block;
+        width: 8px;
+        height: 1.1em;
+        background: var(--primary);
+        margin-left: 2px;
+        vertical-align: text-bottom;
+        animation: blink 1s step-end infinite;
+      }
+
+      /* ───── Section header ───── */
+      .section-header {
+        text-align: center;
+        margin-bottom: 60px;
+      }
+      .section-label {
+        display: inline-block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--primary);
+        margin-bottom: 12px;
+        opacity: 0.8;
+      }
+      .section-title {
+        font-size: clamp(1.8rem, 4vw, 2.8rem);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin-bottom: 16px;
+      }
+      .section-desc {
+        color: var(--muted);
+        font-size: 1.05rem;
+        max-width: 560px;
+        margin: 0 auto;
+      }
+
+      /* ───── Problem / Solution ───── */
+      .problem-solution {
+        padding: 100px 0;
+      }
+      .ps-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-top: 50px;
+      }
+      @media (max-width: 700px) {
+        .ps-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .ps-card {
+        border-radius: var(--radius);
+        padding: 32px;
+        border: 1px solid var(--border);
+      }
+      .ps-before {
+        background: rgba(248, 113, 113, 0.04);
+        border-color: rgba(248, 113, 113, 0.15);
+      }
+      .ps-after {
+        background: rgba(34, 197, 94, 0.04);
+        border-color: rgba(34, 197, 94, 0.15);
+      }
+      .ps-tag {
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .ps-before .ps-tag {
+        color: #f87171;
+      }
+      .ps-after .ps-tag {
+        color: var(--green);
+      }
+      .ps-card pre {
+        font-family: var(--mono);
+        font-size: 0.82rem;
+        line-height: 1.9;
+        color: var(--muted);
+        white-space: pre-wrap;
+      }
+      .ps-card pre .hi {
+        color: var(--text);
+      }
+      .ps-card pre .bad {
+        color: #f87171;
+      }
+      .ps-card pre .good {
+        color: var(--green);
+      }
+      .ps-card pre .cmd {
+        color: var(--primary2);
+      }
+      .ps-divider {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        opacity: 0.3;
+      }
+
+      /* ───── App preview mockup ───── */
+      .app-preview {
+        padding: 80px 0 100px;
+        text-align: center;
+      }
+      .mockup-window {
+        max-width: 960px;
+        margin: 50px auto 0;
+        background: #0d0d0f;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow:
+          0 50px 120px rgba(0, 0, 0, 0.8),
+          0 0 0 1px rgba(255, 255, 255, 0.04);
+        text-align: left;
+        user-select: none;
+      }
+      .mockup-titlebar {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        padding: 9px 16px;
+        background: #080809;
+        border-bottom: 1px solid var(--border);
+      }
+      .mockup-body {
+        display: grid;
+        grid-template-columns: 278px 1fr;
+        min-height: 520px;
+      }
+      /* Sidebar */
+      .mk-sidebar {
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        background: #0d0d0f;
+        overflow: hidden;
+      }
+      .mk-sidebar-tabs {
+        display: flex;
+        border-bottom: 1px solid var(--border);
+      }
+      .mk-stab {
+        flex: 1;
+        padding: 9px 4px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-align: center;
+        color: var(--muted);
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+      }
+      .mk-stab.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+      }
+      .mk-section {
+        padding: 10px 14px 8px;
+      }
+      .mk-section-label {
+        font-size: 0.58rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+        margin-bottom: 7px;
+        text-transform: uppercase;
+      }
+      .mk-printer-row {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 0.78rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .mk-ready {
+        font-size: 0.65rem;
+        color: var(--green);
+        margin-top: 5px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .mk-ready::before {
+        content: "";
+        width: 5px;
+        height: 5px;
+        background: var(--green);
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .mk-setting-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 7px;
+      }
+      .mk-setting-label {
+        font-size: 0.6rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+      .mk-toggle-group {
+        display: flex;
+        gap: 2px;
+      }
+      .mk-toggle {
+        font-size: 0.62rem;
+        font-weight: 700;
+        padding: 3px 7px;
+        border-radius: 4px;
+        border: 1px solid var(--dim);
+        color: var(--muted);
+      }
+      .mk-toggle.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+      }
+      .mk-copies {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .mk-copies-btn {
+        width: 19px;
+        height: 19px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        font-size: 0.8rem;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .mk-copies-val {
+        font-size: 0.85rem;
+        font-weight: 700;
+        width: 22px;
+        text-align: center;
+      }
+      .mk-select {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 5px 9px;
+        font-size: 0.72rem;
+        color: var(--text);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .mk-checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.68rem;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .mk-checkbox {
+        width: 11px;
+        height: 11px;
+        border: 1px solid var(--dim);
+        border-radius: 2px;
+      }
+      .mk-range-row {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.68rem;
+        color: var(--muted);
+      }
+      .mk-range-input {
+        width: 34px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        padding: 3px 5px;
+        font-size: 0.68rem;
+        color: var(--text);
+        text-align: center;
+      }
+      .mk-hint {
+        font-size: 0.58rem;
+        color: var(--muted);
+        margin-top: 5px;
+        opacity: 0.65;
+        line-height: 1.4;
+      }
+      .mk-separator {
+        height: 1px;
+        background: var(--border);
+      }
+      .mk-stats-row {
+        display: flex;
+        gap: 4px;
+        padding: 8px 14px 0;
+      }
+      .mk-stat-box {
+        flex: 1;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 5px 3px;
+        text-align: center;
+      }
+      .mk-stat-val {
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: var(--primary);
+        display: block;
+      }
+      .mk-stat-val.green {
+        color: var(--green);
+      }
+      .mk-stat-val.red {
+        color: #f87171;
+      }
+      .mk-stat-val.pct {
+        color: var(--green);
+      }
+      .mk-stat-name {
+        font-size: 0.52rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+      .mk-print-btn {
+        margin: 8px 14px 0;
+        background: #222230;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 11px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--text);
+        text-align: center;
+        cursor: pointer;
+      }
+      .mk-secondary-btns {
+        display: flex;
+        gap: 5px;
+        padding: 5px 14px 0;
+      }
+      .mk-secondary-btn {
+        flex: 1;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 6px;
+        font-size: 0.67rem;
+        color: var(--muted);
+        text-align: center;
+      }
+      .mk-sound {
+        padding: 7px 14px 10px;
+        font-size: 0.68rem;
+        color: #fbbf24;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      /* Main area */
+      .mk-main {
+        display: flex;
+        flex-direction: column;
+        background: #111116;
+      }
+      .mk-main-topbar {
+        display: flex;
+        align-items: center;
+        padding: 0 14px;
+        border-bottom: 1px solid var(--border);
+        height: 40px;
+        gap: 0;
+      }
+      .mk-tab {
+        padding: 0 14px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+      }
+      .mk-tab.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+      }
+      .mk-add-btn {
+        margin-left: 12px;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 4px 10px;
+        font-size: 0.7rem;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .mk-drop-hint {
+        font-size: 0.65rem;
+        color: var(--muted);
+        margin-left: 10px;
+        letter-spacing: 0.06em;
+      }
+      .mk-sort-btns {
+        margin-left: auto;
+        display: flex;
+        gap: 3px;
+      }
+      .mk-sort-btn {
+        font-size: 0.62rem;
+        color: var(--muted);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 3px 7px;
+      }
+      .mk-dropzone-empty {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 32px;
+        color: var(--muted);
+        gap: 10px;
+      }
+      .mk-cloud-icon {
+        width: 68px;
+        height: 68px;
+        border: 2px dashed var(--dim);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.7rem;
+        margin-bottom: 6px;
+      }
+      .mk-drop-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .mk-drop-desc {
+        font-size: 0.78rem;
+        text-align: center;
+        line-height: 1.7;
+      }
+      .mk-format-chips {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 4px;
+      }
+      .mk-format-chip {
+        font-size: 0.63rem;
+        font-weight: 700;
+        font-family: var(--mono);
+        padding: 3px 8px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        color: var(--muted);
+      }
+
+      /* ───── Features ───── */
+      .features {
+        padding: 100px 0;
+      }
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 18px;
+      }
+      .feature-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 28px;
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+      }
+      .feature-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          135deg,
+          rgba(255, 107, 53, 0.06),
+          transparent
+        );
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      .feature-card:hover {
+        border-color: rgba(255, 107, 53, 0.3);
+        transform: translateY(-3px);
+      }
+      .feature-card:hover::before {
+        opacity: 1;
+      }
+      .feature-icon {
+        font-size: 1.8rem;
+        margin-bottom: 14px;
+        display: block;
+      }
+      .feature-title {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: var(--text);
+      }
+      .feature-desc {
+        font-size: 0.875rem;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .feature-badge {
+        display: inline-block;
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 100px;
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--green);
+        margin-top: 12px;
+        letter-spacing: 0.05em;
+      }
+
+      /* ───── Formats ───── */
+      .formats {
+        padding: 100px 0;
+        background: var(--bg2);
+      }
+      .formats-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 50px;
+      }
+      .format-chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border-radius: 100px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        font-size: 0.875rem;
+        font-weight: 600;
+        font-family: var(--mono);
+        transition: all 0.25s;
+        cursor: default;
+      }
+      .format-chip:hover {
+        border-color: var(--primary);
+        transform: scale(1.05);
+      }
+      .format-chip .fmt-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--green);
+      }
+
+      /* ───── How it works ───── */
+      .how {
+        padding: 100px 0;
+      }
+      .how-steps {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+        position: relative;
+        margin-top: 60px;
+      }
+      @media (max-width: 700px) {
+        .how-steps {
+          grid-template-columns: 1fr;
+        }
+      }
+      .how-steps::before {
+        content: "";
+        position: absolute;
+        top: 42px;
+        left: 16.66%;
+        right: 16.66%;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--dim),
+          transparent
+        );
+      }
+      @media (max-width: 700px) {
+        .how-steps::before {
+          display: none;
+        }
+      }
+      .how-step {
+        text-align: center;
+        padding: 0 24px;
+      }
+      .how-step-num {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: var(--bg3);
+        border: 2px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px;
+        font-size: 1.8rem;
+        position: relative;
+        transition: all 0.3s;
+      }
+      .how-step:hover .how-step-num {
+        border-color: var(--primary);
+        background: rgba(255, 107, 53, 0.1);
+        transform: scale(1.1);
+      }
+      .how-step-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+      .how-step-desc {
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+
+      /* ───── Keyboard shortcuts ───── */
+      .shortcuts {
+        padding: 100px 0;
+        background: var(--bg2);
+      }
+      .shortcuts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 12px;
+        margin-top: 50px;
+      }
+      .shortcut-item {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 20px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        transition: all 0.25s;
+      }
+      .shortcut-item:hover {
+        border-color: rgba(124, 109, 250, 0.3);
+        background: rgba(124, 109, 250, 0.05);
+      }
+      kbd {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        background: var(--bg3);
+        border: 1px solid var(--dim);
+        border-bottom-width: 2px;
+        border-radius: 6px;
+        color: var(--accent2);
+        white-space: nowrap;
+        min-width: 90px;
+        justify-content: center;
+      }
+      .shortcut-desc {
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+
+      /* ───── Roadmap ───── */
+      .roadmap {
+        padding: 100px 0;
+      }
+      .roadmap-list {
+        max-width: 600px;
+        margin: 50px auto 0;
+        position: relative;
+      }
+      .roadmap-list::before {
+        content: "";
+        position: absolute;
+        left: 16px;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        background: linear-gradient(
+          to bottom,
+          var(--primary),
+          var(--dim),
+          transparent
+        );
+      }
+      .roadmap-item {
+        display: flex;
+        gap: 20px;
+        padding: 0 0 32px 48px;
+        position: relative;
+      }
+      .roadmap-dot {
+        position: absolute;
+        left: 0;
+        top: 4px;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: 700;
+        border: 1px solid var(--border);
+      }
+      .roadmap-dot.done {
+        background: rgba(34, 197, 94, 0.15);
+        border-color: rgba(34, 197, 94, 0.3);
+        color: var(--green);
+      }
+      .roadmap-dot.planned {
+        background: rgba(124, 109, 250, 0.1);
+        border-color: rgba(124, 109, 250, 0.25);
+        color: var(--accent2);
+      }
+      .roadmap-version {
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        color: var(--muted);
+        min-width: 36px;
+        padding-top: 2px;
+      }
+      .roadmap-text {
+        font-size: 0.9rem;
+      }
+      .roadmap-status {
+        display: inline-block;
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 100px;
+        margin-left: 8px;
+      }
+      .roadmap-status.done {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--green);
+      }
+      .roadmap-status.planned {
+        background: rgba(124, 109, 250, 0.15);
+        color: var(--accent2);
+      }
+      .roadmap-status.current {
+        background: rgba(255, 107, 53, 0.15);
+        color: var(--primary);
+        animation: pulse 2s infinite;
+      }
+
+      /* ───── Install ───── */
+      .install {
+        padding: 100px 0;
+        background: var(--bg2);
+      }
+      .install-steps {
+        max-width: 640px;
+        margin: 50px auto 0;
+      }
+      .install-step {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 28px;
+      }
+      .install-step-num {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--primary2));
+        color: #fff;
+        font-weight: 800;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .install-step-body {
+        flex: 1;
+      }
+      .install-step-title {
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+      .code-block {
+        background: #0a0a0c;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px 20px;
+        font-family: var(--mono);
+        font-size: 0.85rem;
+        color: var(--primary2);
+        position: relative;
+        overflow: hidden;
+      }
+      .code-block::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: linear-gradient(to bottom, var(--primary), var(--primary2));
+      }
+      .code-block .comment {
+        color: #4a4a66;
+      }
+      .req-chips {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .req-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.8rem;
+        color: var(--text);
+      }
+
+      /* ───── CTA ───── */
+      .cta {
+        padding: 120px 24px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+      .cta::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          ellipse 60% 60% at 50% 50%,
+          rgba(255, 107, 53, 0.08),
+          transparent
+        );
+      }
+      .cta h2 {
+        font-size: clamp(2rem, 5vw, 3.5rem);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin-bottom: 20px;
+      }
+      .cta p {
+        color: var(--muted);
+        font-size: 1.1rem;
+        margin-bottom: 40px;
+      }
+
+      /* ───── Footer ───── */
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 48px 24px;
+        text-align: center;
+      }
+      .footer-logo {
+        font-size: 1.3rem;
+        font-weight: 800;
+        margin-bottom: 12px;
+      }
+      .footer-logo span {
+        background: linear-gradient(135deg, var(--primary), var(--primary2));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      footer p {
+        color: var(--muted);
+        font-size: 0.875rem;
+      }
+      .footer-links {
+        display: flex;
+        gap: 24px;
+        justify-content: center;
+        margin-top: 20px;
+      }
+      .footer-links a {
+        color: var(--muted);
+        font-size: 0.85rem;
+        text-decoration: none;
+        transition: color 0.2s;
+      }
+      .footer-links a:hover {
+        color: var(--primary);
+      }
+
+      /* ───── Divider ───── */
+      .divider {
+        width: 100%;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--border),
+          transparent
+        );
+      }
+
+      /* ───── Animations ───── */
+      @keyframes fadeInDown {
+        from {
+          opacity: 0;
+          transform: translateY(-16px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(24px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0;
+        }
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+      @keyframes progressAnim {
+        from {
+          width: 55%;
+        }
+        to {
+          width: 75%;
+        }
+      }
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+      }
+
+      /* ───── Scroll reveal ───── */
+      .reveal {
+        opacity: 0;
+        transform: translateY(30px);
+        transition:
+          opacity 0.7s ease,
+          transform 0.7s ease;
+      }
+      .reveal.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .reveal-delay-1 {
+        transition-delay: 0.1s;
+      }
+      .reveal-delay-2 {
+        transition-delay: 0.2s;
+      }
+      .reveal-delay-3 {
+        transition-delay: 0.3s;
+      }
+
+      /* ───── Responsive ───── */
+      @media (max-width: 900px) {
+        nav {
+          padding: 14px 20px;
+        }
+        .nav-links {
+          display: none;
+        }
+        .mockup-body {
+          grid-template-columns: 1fr;
+        }
+        .mk-sidebar {
+          border-right: none;
+          border-bottom: 1px solid var(--border);
+        }
+      }
+      @media (max-width: 600px) {
+        .how-steps {
+          gap: 32px;
+        }
+        .hero-stats {
+          gap: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Background blobs -->
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <!-- ───── Navbar ───── -->
+    <nav>
+      <a href="#" class="nav-logo">
+        <div class="icon">
+          <img src="/icon.ico" alt="Lazy Print Icon" class="logo-icon" />
+        </div>
+        <span>Lazy Print</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#features">Fitur</a></li>
+        <li><a href="#formats">Format</a></li>
+        <li><a href="#how">Cara Kerja</a></li>
+        <li><a href="#install">Install</a></li>
+        <li>
+          <a
+            href="dist/Lazy%20Print%20Setup%201.6.0.exe"
+            download
+            class="nav-cta"
+            >Download</a
+          >
+        </li>
+      </ul>
+    </nav>
+
+    <!-- ───── Hero ───── -->
+    <section class="hero">
+      <div class="hero-badge">
+        <span class="dot"></span>
+        v1.6.0 — Sekarang tersedia
+      </div>
+
+      <h1>Print semua dokumen.<br /><span>Tanpa drama.</span></h1>
+
+      <p class="hero-sub">
+        Drag. Drop. Print. <em>Selesai.</em><br />
+        47 dokumen dalam 43 detik — sementara kamu ngopi.
+      </p>
+
+      <div class="hero-buttons">
+        <a
+          href="dist/Lazy%20Print%20Setup%201.6.0.exe"
+          download
+          class="btn btn-primary"
+        >
+          ⬇ Download Gratis
+        </a>
+        <a href="#features" class="btn btn-secondary"> ✨ Lihat Fitur </a>
+      </div>
+
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <strong>11+</strong>
+          <span>Format dokumen</span>
+        </div>
+        <div class="hero-stat">
+          <strong>24+</strong>
+          <span>Fitur bawaan</span>
+        </div>
+        <div class="hero-stat">
+          <strong>100%</strong>
+          <span>Background silent</span>
+        </div>
+        <div class="hero-stat">
+          <strong>MIT</strong>
+          <span>Open Source</span>
+        </div>
+      </div>
+
+      <!-- Terminal mockup -->
+      <div class="terminal-wrap">
+        <div class="terminal">
+          <div class="terminal-bar">
+            <div class="dot-red"></div>
+            <div class="dot-yellow"></div>
+            <div class="dot-green"></div>
+            <span class="terminal-title">lazy-print — batch print</span>
+          </div>
+          <div class="terminal-body">
+            <div class="t-comment">
+              // Sebelum Lazy Print — Senin pagi, 47 dokumen 😤
+            </div>
+            <div>
+              <span class="t-err">✗</span>
+              <span class="t-dim"
+                >buka file 1... tunggu... Print... pilih printer...</span
+              >
+            </div>
+            <div>
+              <span class="t-err">✗</span>
+              <span class="t-dim">kenapa defaultnya ganti sendiri??...</span>
+            </div>
+            <div>
+              <span class="t-err">✗</span>
+              <span class="t-dim">"Microsoft Word tidak merespons" 😤</span>
+            </div>
+            <br />
+            <div class="t-comment">// Sesudah Lazy Print ☕</div>
+            <div>
+              <span class="t-cmd">🗂</span>
+              <span class="t-bold">Drag semua file → drop</span>
+            </div>
+            <div>
+              <span class="t-cmd">🖨️</span>
+              <span class="t-bold">Pilih printer</span>
+            </div>
+            <div>
+              <span class="t-cmd">▶</span>
+              <span class="t-bold">Klik Print</span>
+            </div>
+            <br />
+            <div>
+              <span class="t-ok">✓</span>
+              <span class="t-bold">47/47 dokumen terkirim ke printer</span>
+            </div>
+            <div>
+              <span class="t-ok">✓</span>
+              <span class="t-dim">Selesai dalam 43 detik.</span>
+              <span class="cursor"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───── Problem / Solution ───── -->
+    <section class="problem-solution">
+      <div class="container">
+        <div class="section-header reveal">
+          <p class="section-label">Kenapa Lazy Print?</p>
+          <h2 class="section-title">Kamu tahu rasanya.</h2>
+          <p class="section-desc">
+            Deadline mepet, dokumen banyak, dan printer nggak mau kooperasi.
+          </p>
+        </div>
+
+        <div class="ps-grid reveal">
+          <div class="ps-card ps-before">
+            <div class="ps-tag">😩 Tanpa Lazy Print</div>
+            <pre><span class="hi">Senin pagi. 47 dokumen.</span>
+<span class="hi">Deadline 5 menit lagi.</span>
+
+📂 Buka file 1...
+   tunggu loading...
+   klik Print...
+   pilih printer...
+   OK... tunggu...
+
+📂 Buka file 2...
+   <span class="bad">kenapa defaultnya ganti sendiri??</span>
+
+📂 Buka file 3...
+   <span class="bad">"Word tidak merespons"</span>
+
+😤 <span class="bad">*meja bergetar*</span></pre>
+          </div>
+
+          <div class="ps-card ps-after">
+            <div class="ps-tag">😎 Dengan Lazy Print</div>
+            <pre><span class="hi">Senin pagi. 47 dokumen.</span>
+<span class="hi">Deadline 5 menit lagi.</span>
+
+<span class="cmd">🗂  Drag semua file → drop</span>
+<span class="cmd">🖨️  Pilih printer</span>
+<span class="cmd">▶   Klik Print</span>
+
+☕  <span class="hi">Ngopi dulu.</span>
+
+
+
+<span class="good">✅  47/47 dokumen terkirim.</span>
+<span class="good">    Selesai dalam 43 detik.</span></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───── App Preview ───── -->
+    <section class="app-preview">
+      <div class="container">
+        <div class="section-header reveal">
+          <p class="section-label">Tampilan Aplikasi</p>
+          <h2 class="section-title">Bersih. Intuitif. Cepat.</h2>
+        </div>
+
+        <div class="mockup-window reveal">
+          <!-- Titlebar -->
+          <div class="mockup-titlebar">
+            <div
+              style="
+                width: 22px;
+                height: 22px;
+                background: var(--primary);
+                border-radius: 5px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 900;
+                font-size: 0.65rem;
+                color: #fff;
+                letter-spacing: -0.5px;
+                margin-right: 8px;
+              "
+            >
+              LP
+            </div>
+            <span
+              style="font-weight: 700; color: var(--text); font-size: 0.85rem"
+              >LazyPrint</span
+            >
+            <span
+              style="margin-left: 10px; font-size: 0.72rem; color: var(--muted)"
+              >Cara cepat print semua dokumen</span
+            >
+            <div
+              style="
+                margin-left: auto;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+              "
+            >
+              <span
+                style="
+                  font-size: 0.65rem;
+                  font-weight: 700;
+                  padding: 2px 9px;
+                  background: rgba(34, 197, 94, 0.1);
+                  border: 1px solid rgba(34, 197, 94, 0.2);
+                  border-radius: 4px;
+                  color: var(--green);
+                "
+                >● GS OK</span
+              >
+              <span
+                style="
+                  font-size: 0.65rem;
+                  font-weight: 700;
+                  padding: 2px 9px;
+                  background: rgba(255, 107, 53, 0.1);
+                  border: 1px solid rgba(255, 107, 53, 0.25);
+                  border-radius: 4px;
+                  color: var(--primary);
+                "
+                >v1.6.0</span
+              >
+              <div class="dot-yellow" style="width: 10px; height: 10px"></div>
+              <div class="dot-green" style="width: 10px; height: 10px"></div>
+              <div class="dot-red" style="width: 10px; height: 10px"></div>
+            </div>
+          </div>
+
+          <div class="mockup-body">
+            <!-- LEFT SIDEBAR -->
+            <div class="mk-sidebar">
+              <div class="mk-sidebar-tabs">
+                <div class="mk-stab active">SETTINGS</div>
+                <div class="mk-stab">PROFILES</div>
+                <div class="mk-stab">RECENT</div>
+              </div>
+
+              <!-- Printer -->
+              <div class="mk-section">
+                <div class="mk-section-label">Printer</div>
+                <div class="mk-printer-row">
+                  <span>HP LaserJet Pro M404</span>
+                  <span style="color: var(--muted); font-size: 0.7rem">▾</span>
+                </div>
+                <div class="mk-ready">Ready to print</div>
+              </div>
+              <div class="mk-separator"></div>
+
+              <!-- Print Settings -->
+              <div class="mk-section">
+                <div class="mk-section-label">Print Settings</div>
+                <div class="mk-setting-row">
+                  <span class="mk-setting-label">COPIES</span>
+                  <div class="mk-copies">
+                    <div class="mk-copies-btn">−</div>
+                    <div class="mk-copies-val">1</div>
+                    <div class="mk-copies-btn">+</div>
+                  </div>
+                </div>
+                <div class="mk-setting-row">
+                  <span class="mk-setting-label">ORIENTATION</span>
+                  <div class="mk-toggle-group">
+                    <div class="mk-toggle active">PORT</div>
+                    <div class="mk-toggle">LAND</div>
+                  </div>
+                </div>
+                <div class="mk-setting-row">
+                  <span class="mk-setting-label">COLOR</span>
+                  <div class="mk-toggle-group">
+                    <div class="mk-toggle active">COLOR</div>
+                    <div class="mk-toggle">B&amp;W</div>
+                  </div>
+                </div>
+                <div class="mk-setting-row" style="margin-bottom: 0">
+                  <span class="mk-setting-label">PAPER SIZE</span>
+                  <div class="mk-select" style="width: 116px">
+                    <span>A4 (210×297mm)</span>
+                    <span style="color: var(--muted); margin-left: 4px">▾</span>
+                  </div>
+                </div>
+              </div>
+              <div class="mk-separator"></div>
+
+              <!-- Page Range -->
+              <div class="mk-section">
+                <div class="mk-section-label">Page Range</div>
+                <div class="mk-checkbox-row">
+                  <div class="mk-checkbox"></div>
+                  <span>Enable range</span>
+                </div>
+                <div class="mk-range-row">
+                  <span>PAGES</span>
+                  <div class="mk-range-input">1</div>
+                  <span>—</span>
+                  <div class="mk-range-input">end</div>
+                </div>
+                <div class="mk-hint">
+                  Klik pada file untuk preview &amp; cek halaman
+                </div>
+              </div>
+              <div class="mk-separator"></div>
+
+              <!-- Advanced Print -->
+              <div class="mk-section">
+                <div class="mk-section-label">Advanced Print</div>
+                <div class="mk-setting-row">
+                  <span class="mk-setting-label">N-UP</span>
+                  <div class="mk-select" style="width: 130px">
+                    <span>1 halaman/lembar</span>
+                    <span style="color: var(--muted); margin-left: 4px">▾</span>
+                  </div>
+                </div>
+                <div class="mk-setting-row" style="margin-bottom: 0">
+                  <span class="mk-setting-label">DUPLEX</span>
+                  <div class="mk-toggle-group">
+                    <div class="mk-toggle active">SINGLE</div>
+                    <div class="mk-toggle">DOUBLE</div>
+                  </div>
+                </div>
+              </div>
+              <div class="mk-separator"></div>
+
+              <!-- Stats -->
+              <div class="mk-stats-row">
+                <div class="mk-stat-box">
+                  <span class="mk-stat-val">3</span>
+                  <span class="mk-stat-name">Total</span>
+                </div>
+                <div class="mk-stat-box">
+                  <span class="mk-stat-val green">2</span>
+                  <span class="mk-stat-name">Done</span>
+                </div>
+                <div class="mk-stat-box">
+                  <span class="mk-stat-val red">0</span>
+                  <span class="mk-stat-name">Errors</span>
+                </div>
+              </div>
+              <div class="mk-stats-row" style="padding-top: 4px">
+                <div class="mk-stat-box">
+                  <span class="mk-stat-val" style="font-size: 0.78rem"
+                    >247</span
+                  >
+                  <span class="mk-stat-name">All Time</span>
+                </div>
+                <div class="mk-stat-box">
+                  <span class="mk-stat-val pct" style="font-size: 0.78rem"
+                    >98%</span
+                  >
+                  <span class="mk-stat-name">Success</span>
+                </div>
+              </div>
+
+              <!-- Print button -->
+              <div class="mk-print-btn">🖨 Print All Documents</div>
+              <div class="mk-secondary-btns">
+                <div class="mk-secondary-btn">📄 Export PDF</div>
+                <div class="mk-secondary-btn">✕ Clear</div>
+              </div>
+              <div class="mk-sound">🔔 Suara On</div>
+            </div>
+
+            <!-- RIGHT MAIN -->
+            <div class="mk-main">
+              <div class="mk-main-topbar">
+                <div class="mk-tab active">QUEUE</div>
+                <div class="mk-tab">HISTORY</div>
+                <div class="mk-add-btn">Add Files</div>
+                <span class="mk-drop-hint">DROP FILES TO QUEUE</span>
+                <div class="mk-sort-btns">
+                  <div class="mk-sort-btn">↓ Name</div>
+                  <div class="mk-sort-btn">↑ Type</div>
+                  <div class="mk-sort-btn">↕ Rev</div>
+                </div>
+              </div>
+              <div class="mk-dropzone-empty">
+                <div class="mk-cloud-icon">☁</div>
+                <div class="mk-drop-title">Drop Dokumen di Sini</div>
+                <div class="mk-drop-desc">
+                  Drag &amp; drop dari Explorer / Finder<br />
+                  atau klik Add Files<br />
+                  ☰ Drag item di list untuk reorder
+                </div>
+                <div class="mk-format-chips">
+                  <span class="mk-format-chip">PDF</span>
+                  <span class="mk-format-chip">DOCX</span>
+                  <span class="mk-format-chip">XLSX</span>
+                  <span class="mk-format-chip">PPTX</span>
+                  <span class="mk-format-chip">TXT</span>
+                  <span class="mk-format-chip">PNG/JPG</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───── Features ───── -->
+    <section class="features" id="features">
+      <div class="container">
+        <div class="section-header reveal">
+          <p class="section-label">Fitur</p>
+          <h2 class="section-title">Semua yang kamu butuhkan.</h2>
+          <p class="section-desc">
+            24+ fitur yang bikin ngeprint jadi pekerjaan paling gampang hari
+            ini.
+          </p>
+        </div>
+
+        <div class="features-grid">
+          <div class="feature-card reveal">
+            <span class="feature-icon">🗂️</span>
+            <div class="feature-title">Drag & Drop Massal</div>
+            <div class="feature-desc">
+              Drop banyak file sekaligus. Tidak ada batasan jumlah. Campur
+              berbagai format pun bisa.
+            </div>
+            <span class="feature-badge">✓ Ready</span>
+          </div>
+          <div class="feature-card reveal reveal-delay-1">
+            <span class="feature-icon">🖨️</span>
+            <div class="feature-title">Auto-detect Printer</div>
+            <div class="feature-desc">
+              Default printer otomatis terpilih. Ganti printer kapanpun dengan
+              satu klik.
+            </div>
+            <span class="feature-badge">✓ Ready</span>
+          </div>
+          <div class="feature-card reveal reveal-delay-2">
+            <span class="feature-icon">👁️</span>
+            <div class="feature-title">PDF Preview</div>
+            <div class="feature-desc">
+              Preview per halaman sebelum print. Navigasi halaman dengan
+              keyboard shortcut.
+            </div>
+            <span class="feature-badge">✓ Ready</span>
+          </div>
+          <div class="feature-card reveal">
+            <span class="feature-icon">📁</span>
+            <div class="feature-title">Watch Folder</div>
+            <div class="feature-desc">
+              Set folder, auto-print setiap file baru yang masuk. Tinggal copy
+              file, selesai.
+            </div>
+            <span class="feature-badge">✓ Ready</span>
+          </div>
+          <div class="feature-card reveal reveal-delay-1">
+            <span class="feature-icon">💾</span>
+            <div class="feature-title">Print Profiles</div>
+            <div class="feature-desc">
+              Simpan konfigurasi printer favorit sebagai profil. Load dengan
+              satu klik.
+            </div>
+            <span class="feature-badge">✓ Ready</span>
+          </div>
+          <div class="feature-card reveal reveal-delay-2">
+            <span class="feature-icon">🔄</span>
+            <div class="feature-title">Queue Persistence</div>
+            <div class="feature-desc">
+              Queue tersimpan meski app ditutup. Buka lagi, lanjut dari mana
+              kamu tinggalkan.
+            </div>
+            <span class="feature-badge">✓ Ready</span>
+          </div>
+          <div class="feature-card reveal">
+            <span class="feature-icon">📜</span>
+            <div class="feature-title">Print History & Search</div>
+            <div class="feature-desc">
+              Log semua aktivitas print tersimpan permanen. Cari berdasarkan
+              nama file atau printer.
+            </div>
+            <span class="feature-badge">✓ Ready</span>
+          </div>
+          <div class="feature-card reveal reveal-delay-1">
+            <span class="feature-icon">🔢</span>
+            <div class="feature-title">Page Range Per-File</div>
+            <div class="feature-desc">
+              Print halaman tertentu saja untuk setiap file secara individual.
+            </div>
+            <span class="feature-badge">✓ Ready</span>
+          </div>
+          <div class="feature-card reveal reveal-delay-2">
+            <span class="feature-icon">🖥️</span>
+            <div class="feature-title">System Tray</div>
+            <div class="feature-desc">
+              Minimize ke tray, app tetap aktif di background. Tidak menggangu
+              workflow.
+            </div>
+            <span class="feature-badge">✓ Ready</span>
+          </div>
+          <div class="feature-card reveal">
+            <span class="feature-icon">⚠️</span>
+            <div class="feature-title">Duplicate Detection</div>
+            <div class="feature-desc">
+              File yang sama di-flash kuning, tidak masuk dobel. Tidak ada
+              dokumen yang terprint dua kali.
+            </div>
+            <span class="feature-badge">✓ Ready</span>
+          </div>
+          <div class="feature-card reveal reveal-delay-1">
+            <span class="feature-icon">↩️</span>
+            <div class="feature-title">Undo Hapus</div>
+            <div class="feature-desc">
+              Ctrl+Z untuk kembalikan file yang tidak sengaja dihapus. Sampai 10
+              langkah undo.
+            </div>
+            <span class="feature-badge">✓ Ready</span>
+          </div>
+          <div class="feature-card reveal reveal-delay-2">
+            <span class="feature-icon">📤</span>
+            <div class="feature-title">Export ke PDF</div>
+            <div class="feature-desc">
+              Gabungkan semua file antrian menjadi satu PDF. LibreOffice-first,
+              tanpa watermark.
+            </div>
+            <span class="feature-badge">✓ Ready</span>
+          </div>
+          <div class="feature-card reveal">
+            <span class="feature-icon">📊</span>
+            <div class="feature-title">Live Progress</div>
+            <div class="feature-desc">
+              Real-time status per dokumen. Tahu persis file mana yang sedang
+              diproses.
+            </div>
+            <span class="feature-badge">✓ Ready</span>
+          </div>
+          <div class="feature-card reveal reveal-delay-1">
+            <span class="feature-icon">🕓</span>
+            <div class="feature-title">Recent Files</div>
+            <div class="feature-desc">
+              Panel file terakhir dicetak. Klik untuk tambah lagi ke antrian
+              tanpa cari ulang.
+            </div>
+            <span class="feature-badge">✓ Ready</span>
+          </div>
+          <div class="feature-card reveal reveal-delay-2">
+            <span class="feature-icon">🌙</span>
+            <div class="feature-title">Dark Mode Default</div>
+            <div class="feature-desc">
+              Dark by default, karena siapa yang mau terang saat deadline mepet
+              jam 11 malam.
+            </div>
+            <span class="feature-badge">✓ Ready</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───── Formats ───── -->
+    <section class="formats" id="formats">
+      <div class="container">
+        <div class="section-header reveal">
+          <p class="section-label">Format Dokumen</p>
+          <h2 class="section-title">Apapun formatnya, bisa.</h2>
+          <p class="section-desc">
+            11 format utama plus variannya. PDF, Office, OpenDocument, gambar,
+            teks — semua didukung.
+          </p>
+        </div>
+
+        <div class="formats-grid reveal">
+          <div class="format-chip"><span class="fmt-dot"></span> PDF</div>
+          <div class="format-chip"><span class="fmt-dot"></span> DOCX</div>
+          <div class="format-chip"><span class="fmt-dot"></span> XLSX</div>
+          <div class="format-chip"><span class="fmt-dot"></span> PPTX</div>
+          <div class="format-chip"><span class="fmt-dot"></span> ODT</div>
+          <div class="format-chip"><span class="fmt-dot"></span> ODS</div>
+          <div class="format-chip"><span class="fmt-dot"></span> RTF</div>
+          <div class="format-chip"><span class="fmt-dot"></span> HTML</div>
+          <div class="format-chip"><span class="fmt-dot"></span> TXT</div>
+          <div class="format-chip"><span class="fmt-dot"></span> PNG</div>
+          <div class="format-chip"><span class="fmt-dot"></span> JPG</div>
+          <div class="format-chip">
+            <span class="fmt-dot" style="background: #555"></span> DOC
+          </div>
+          <div class="format-chip">
+            <span class="fmt-dot" style="background: #555"></span> XLS
+          </div>
+          <div class="format-chip">
+            <span class="fmt-dot" style="background: #555"></span> PPT
+          </div>
+          <div class="format-chip">
+            <span class="fmt-dot" style="background: #555"></span> HTM
+          </div>
+          <div class="format-chip">
+            <span class="fmt-dot" style="background: #555"></span> JPEG
+          </div>
+          <div class="format-chip">
+            <span class="fmt-dot" style="background: #555"></span> BMP
+          </div>
+        </div>
+
+        <div
+          style="
+            text-align: center;
+            margin-top: 32px;
+            color: var(--muted);
+            font-size: 0.875rem;
+          "
+          class="reveal"
+        >
+          Semua proses berjalan
+          <strong style="color: var(--text)">100% di background</strong> — tidak
+          ada jendela yang terbuka saat printing.
+        </div>
+      </div>
+    </section>
+
+    <!-- ───── How it works ───── -->
+    <section class="how" id="how">
+      <div class="container">
+        <div class="section-header reveal">
+          <p class="section-label">Cara Kerja</p>
+          <h2 class="section-title">3 langkah. Beneran.</h2>
+          <p class="section-desc">
+            Tidak ada konfigurasi rumit. Tidak ada driver aneh. Just works.
+          </p>
+        </div>
+
+        <div class="how-steps">
+          <div class="how-step reveal">
+            <div class="how-step-num">🗂️</div>
+            <div class="how-step-title">Drop File</div>
+            <div class="how-step-desc">
+              Drag & drop file apapun ke aplikasi. Bisa satu, bisa puluhan
+              sekaligus.
+            </div>
+          </div>
+          <div class="how-step reveal reveal-delay-1">
+            <div class="how-step-num">🖨️</div>
+            <div class="how-step-title">Pilih Printer</div>
+            <div class="how-step-desc">
+              Printer terdeteksi otomatis. Pilih yang kamu mau, atur salinan &
+              halaman jika perlu.
+            </div>
+          </div>
+          <div class="how-step reveal reveal-delay-2">
+            <div class="how-step-num">▶</div>
+            <div class="how-step-title">Klik Print</div>
+            <div class="how-step-desc">
+              Semua file masuk ke printer satu per satu, silent, di background.
+              Sambil ngopi.
+            </div>
+          </div>
+        </div>
+
+        <!-- Tech pipeline -->
+        <div style="max-width: 640px; margin: 60px auto 0" class="reveal">
+          <div
+            class="mockup-label"
+            style="text-align: center; margin-bottom: 16px"
+          >
+            Pipeline per Format
+          </div>
+          <div class="code-block" style="line-height: 2">
+            <div>
+              <span style="color: var(--accent2)">PDF</span>
+              <span style="color: var(--muted)">──►</span> Ghostscript
+              (mswinpr2) <span style="color: var(--muted)">──►</span>
+              <span style="color: var(--green)">🖨 Printer</span>
+            </div>
+            <div>
+              <span style="color: var(--accent2)">DOCX/XLS/PPTX</span>
+              <span style="color: var(--muted)">──►</span> LibreOffice headless
+              → PDF <span style="color: var(--muted)">──►</span>
+              <span style="color: var(--green)">🖨 Printer</span>
+            </div>
+            <div>
+              <span style="color: var(--accent2)">ODT/RTF/HTML</span>
+              <span style="color: var(--muted)">──►</span> LibreOffice headless
+              → PDF <span style="color: var(--muted)">──►</span>
+              <span style="color: var(--green)">🖨 Printer</span>
+            </div>
+            <div>
+              <span style="color: var(--accent2)">TXT</span>
+              <span style="color: var(--muted)">──►</span> PowerShell
+              Out-Printer <span style="color: var(--muted)">──►</span>
+              <span style="color: var(--green)">🖨 Printer</span>
+            </div>
+            <div>
+              <span style="color: var(--accent2)">PNG/JPG/BMP</span>
+              <span style="color: var(--muted)">──►</span> .NET PrintDocument
+              <span style="color: var(--muted)">──►</span>
+              <span style="color: var(--green)">🖨 Printer</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───── Shortcuts ───── -->
+    <section class="shortcuts" id="shortcuts">
+      <div class="container">
+        <div class="section-header reveal">
+          <p class="section-label">Keyboard Shortcuts</p>
+          <h2 class="section-title">Tangan di keyboard, bukan di mouse.</h2>
+        </div>
+
+        <div class="shortcuts-grid">
+          <div class="shortcut-item reveal">
+            <kbd>Ctrl + O</kbd>
+            <span class="shortcut-desc">Tambah file</span>
+          </div>
+          <div class="shortcut-item reveal reveal-delay-1">
+            <kbd>Ctrl + P</kbd>
+            <span class="shortcut-desc">Mulai print</span>
+          </div>
+          <div class="shortcut-item reveal reveal-delay-2">
+            <kbd>Ctrl + A</kbd>
+            <span class="shortcut-desc">Pilih semua file</span>
+          </div>
+          <div class="shortcut-item reveal">
+            <kbd>Ctrl + Z</kbd>
+            <span class="shortcut-desc">Undo hapus file</span>
+          </div>
+          <div class="shortcut-item reveal reveal-delay-1">
+            <kbd>Space</kbd>
+            <span class="shortcut-desc">Toggle preview file</span>
+          </div>
+          <div class="shortcut-item reveal reveal-delay-2">
+            <kbd>Del</kbd>
+            <span class="shortcut-desc">Hapus file dipilih</span>
+          </div>
+          <div class="shortcut-item reveal">
+            <kbd>← →</kbd>
+            <span class="shortcut-desc">Navigasi halaman preview</span>
+          </div>
+          <div class="shortcut-item reveal reveal-delay-1">
+            <kbd>Ctrl + ↑↓</kbd>
+            <span class="shortcut-desc">Pindah urutan file</span>
+          </div>
+          <div class="shortcut-item reveal reveal-delay-2">
+            <kbd>?</kbd>
+            <span class="shortcut-desc">Tampilkan semua shortcut</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───── Roadmap ───── -->
+    <section class="roadmap">
+      <div class="container">
+        <div class="section-header reveal">
+          <p class="section-label">Roadmap</p>
+          <h2 class="section-title">Sudah jauh, masih terus berkembang.</h2>
+        </div>
+
+        <div class="roadmap-list reveal">
+          <div class="roadmap-item">
+            <div class="roadmap-dot done">✓</div>
+            <div class="roadmap-version">v1.0</div>
+            <div class="roadmap-text">
+              Core print engine + drag & drop
+              <span class="roadmap-status done">Done</span>
+            </div>
+          </div>
+          <div class="roadmap-item">
+            <div class="roadmap-dot done">✓</div>
+            <div class="roadmap-version">v1.1</div>
+            <div class="roadmap-text">
+              PDF preview + page range
+              <span class="roadmap-status done">Done</span>
+            </div>
+          </div>
+          <div class="roadmap-item">
+            <div class="roadmap-dot done">✓</div>
+            <div class="roadmap-version">v1.2</div>
+            <div class="roadmap-text">
+              Print history & search
+              <span class="roadmap-status done">Done</span>
+            </div>
+          </div>
+          <div class="roadmap-item">
+            <div class="roadmap-dot done">✓</div>
+            <div class="roadmap-version">v1.3</div>
+            <div class="roadmap-text">
+              Build ke .exe (installer)
+              <span class="roadmap-status done">Done</span>
+            </div>
+          </div>
+          <div class="roadmap-item">
+            <div class="roadmap-dot done">✓</div>
+            <div class="roadmap-version">v1.4</div>
+            <div class="roadmap-text">
+              Format tambahan (ODT, ODS, RTF, HTML) + error handling
+              <span class="roadmap-status done">Done</span>
+            </div>
+          </div>
+          <div class="roadmap-item">
+            <div class="roadmap-dot done">✓</div>
+            <div class="roadmap-version">v1.5</div>
+            <div class="roadmap-text">
+              Print profiles · watch folder · queue persistence
+              <span class="roadmap-status done">Done</span>
+            </div>
+          </div>
+          <div class="roadmap-item">
+            <div class="roadmap-dot done">✓</div>
+            <div class="roadmap-version">v1.6</div>
+            <div class="roadmap-text">
+              System tray · sound notification · undo · recent files · lifetime
+              stats · duplicate detection · keyboard shortcuts · PDF export
+              <span class="roadmap-status current">Current</span>
+            </div>
+          </div>
+          <div class="roadmap-item">
+            <div class="roadmap-dot planned">○</div>
+            <div class="roadmap-version">v2.0</div>
+            <div class="roadmap-text">
+              Scheduled print
+              <span class="roadmap-status planned">Planned</span>
+            </div>
+          </div>
+          <div class="roadmap-item">
+            <div class="roadmap-dot planned">○</div>
+            <div class="roadmap-version">v2.1</div>
+            <div class="roadmap-text">
+              Network printer discovery
+              <span class="roadmap-status planned">Planned</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───── Install ───── -->
+    <section class="install" id="install">
+      <div class="container">
+        <div class="section-header reveal">
+          <p class="section-label">Download</p>
+          <h2 class="section-title">Gratis. Langsung pakai.</h2>
+          <p class="section-desc">
+            Windows installer siap dipakai. Tidak perlu coding, tidak perlu
+            setup rumit.
+          </p>
+        </div>
+
+        <!-- Download card utama -->
+        <div style="max-width: 640px; margin: 0 auto" class="reveal">
+          <div
+            style="
+              background: rgba(255, 107, 53, 0.06);
+              border: 1px solid rgba(255, 107, 53, 0.2);
+              border-radius: 16px;
+              padding: 36px;
+              text-align: center;
+              margin-bottom: 32px;
+            "
+          >
+            <div style="font-size: 3rem; margin-bottom: 12px">🖨️</div>
+            <div
+              style="font-size: 1.2rem; font-weight: 800; margin-bottom: 6px"
+            >
+              Lazy Print v1.6.0
+            </div>
+            <div
+              style="
+                font-size: 0.875rem;
+                color: var(--muted);
+                margin-bottom: 24px;
+              "
+            >
+              Windows Installer · 64-bit · ~80MB
+            </div>
+            <a
+              href="dist/Lazy%20Print%20Setup%201.6.0.exe"
+              download
+              class="btn btn-primary"
+              style="
+                font-size: 1.05rem;
+                padding: 16px 40px;
+                display: inline-flex;
+              "
+            >
+              ⬇ &nbsp; Download .exe
+            </a>
+            <div
+              style="margin-top: 16px; font-size: 0.8rem; color: var(--muted)"
+            >
+              Setelah download, jalankan installer → selesai.
+            </div>
+          </div>
+
+          <!-- Prerequisites setelah install -->
+          <div
+            style="
+              background: var(--surface);
+              border: 1px solid var(--border);
+              border-radius: 12px;
+              padding: 24px;
+              margin-bottom: 20px;
+            "
+          >
+            <div
+              style="
+                font-size: 0.75rem;
+                font-weight: 700;
+                letter-spacing: 0.1em;
+                color: var(--muted);
+                text-transform: uppercase;
+                margin-bottom: 14px;
+              "
+            >
+              Prasyarat (install sekali saja)
+            </div>
+            <div class="req-chips">
+              <div class="req-chip">
+                👻 Ghostscript
+                <span style="color: var(--muted); margin-left: 4px"
+                  >— untuk PDF</span
+                >
+              </div>
+              <div class="req-chip">
+                💜 LibreOffice
+                <span style="color: var(--muted); margin-left: 4px"
+                  >— untuk DOCX/XLSX/PPTX (opsional)</span
+                >
+              </div>
+            </div>
+            <div
+              style="
+                margin-top: 12px;
+                font-size: 0.78rem;
+                color: var(--muted);
+                line-height: 1.6;
+              "
+            >
+              Ghostscript tersedia gratis di
+              <strong style="color: var(--text)">ghostscript.com</strong> ·
+              LibreOffice di
+              <strong style="color: var(--text)">libreoffice.org</strong>
+            </div>
+          </div>
+
+          <!-- Dev mode -->
+          <details
+            style="
+              background: var(--surface);
+              border: 1px solid var(--border);
+              border-radius: 12px;
+              padding: 20px;
+            "
+          >
+            <summary
+              style="
+                font-size: 0.85rem;
+                font-weight: 700;
+                color: var(--muted);
+                cursor: pointer;
+                list-style: none;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+              "
+            >
+              <span
+                style="
+                  font-size: 0.7rem;
+                  border: 1px solid var(--dim);
+                  border-radius: 4px;
+                  padding: 2px 7px;
+                  color: var(--accent2);
+                "
+                >DEV</span
+              >
+              Jalankan dari source (Node.js)
+            </summary>
+            <div style="margin-top: 16px">
+              <div class="install-steps" style="margin-top: 0">
+                <div class="install-step" style="margin-bottom: 16px">
+                  <div class="install-step-num">1</div>
+                  <div class="install-step-body">
+                    <div class="install-step-title" style="font-size: 0.85rem">
+                      Install Node.js v16+ & Ghostscript
+                    </div>
+                  </div>
+                </div>
+                <div class="install-step" style="margin-bottom: 16px">
+                  <div class="install-step-num">2</div>
+                  <div class="install-step-body">
+                    <div class="code-block">
+                      <div class="comment"># Install dependencies</div>
+                      <div>npm install</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="install-step">
+                  <div class="install-step-num">3</div>
+                  <div class="install-step-body">
+                    <div class="code-block">
+                      <div class="comment"># Jalankan</div>
+                      <div>npm start</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───── CTA ───── -->
+    <section class="cta">
+      <div class="container">
+        <h2 class="reveal">
+          Cukup buka, drop, print.<br /><span style="color: var(--primary)"
+            >Tidak ada yang lebih rumit dari itu.</span
+          >
+        </h2>
+        <p class="reveal">
+          Gratis. Open source. MIT License. Dibuat dengan ☕ dan rasa malas yang
+          produktif.
+        </p>
+        <div class="hero-buttons reveal">
+          <a
+            href="dist/Lazy%20Print%20Setup%201.6.0.exe"
+            download
+            class="btn btn-primary"
+            >⬇ Download Lazy Print v1.6.0</a
+          >
+        </div>
+      </div>
+    </section>
+
+    <!-- ───── Footer ───── -->
+    <footer>
+      <div class="footer-logo">
+        <img src="/icon.ico" alt="Lazy Print Icon" class="logo-icon" />
+        <span>Lazy Print</span>
+      </div>
+      <p>
+        v1.6.0 &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; Electron + Ghostscript
+      </p>
+      <div class="footer-links">
+        <a href="#features">Fitur</a>
+        <a href="#formats">Format</a>
+        <a href="#how">Cara Kerja</a>
+        <a href="#install">Install</a>
+        <a href="#shortcuts">Shortcuts</a>
+      </div>
+      <p style="margin-top: 24px; font-size: 0.8rem">
+        Dibuat dengan ☕ dan rasa malas yang produktif.
+      </p>
+    </footer>
+
+    <!-- ───── Scripts ───── -->
+    <script>
+      // Scroll reveal
+      const reveals = document.querySelectorAll(".reveal");
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("visible");
+              observer.unobserve(e.target);
+            }
+          });
+        },
+        { threshold: 0.12, rootMargin: "0px 0px -40px 0px" },
+      );
+      reveals.forEach((el) => observer.observe(el));
+
+      // Nav shrink on scroll
+      const nav = document.querySelector("nav");
+      window.addEventListener("scroll", () => {
+        nav.style.padding = window.scrollY > 60 ? "10px 40px" : "16px 40px";
+      });
+
+      // Active nav link highlight
+      const sections = document.querySelectorAll("section[id]");
+      const navLinks = document.querySelectorAll(".nav-links a");
+      const navObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              navLinks.forEach((l) => (l.style.color = ""));
+              const active = document.querySelector(
+                `.nav-links a[href="#${e.target.id}"]`,
+              );
+              if (active && !active.classList.contains("nav-cta"))
+                active.style.color = "var(--primary)";
+            }
+          });
+        },
+        { threshold: 0.4 },
+      );
+      sections.forEach((s) => navObserver.observe(s));
+
+      // Feature card stagger
+      document.querySelectorAll(".feature-card").forEach((el, i) => {
+        el.style.transitionDelay = `${(i % 3) * 0.08}s`;
+      });
+    </script>
+  </body>
+</html>

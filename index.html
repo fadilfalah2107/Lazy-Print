@@ -1,0 +1,4220 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Lazy Print</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      :root {
+        --bg: #0a0a0f;
+        --s: #111118;
+        --s2: #16161f;
+        --s3: #1c1c28;
+        --b: #2a2a3a;
+        --b2: #3a3a52;
+        --ac: #ff6b35;
+        --ac2: #ff9a6c;
+        --acg: rgba(255, 107, 53, 0.3);
+        --tx: #e8e8f0;
+        --tx2: #9898b8;
+        --tx3: #5a5a7a;
+        --ok: #3cffa0;
+        --er: #ff4d6d;
+        --wa: #ffd93d;
+        --inf: #5bc8ff;
+        --mono: "Space Mono", monospace;
+        --sans: "Syne", sans-serif;
+      }
+      html,
+      body {
+        height: 100%;
+        background: var(--bg);
+        color: var(--tx);
+        font-family: var(--sans);
+        overflow: hidden;
+        user-select: none;
+      }
+
+      /* TITLEBAR */
+      .tb {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 46px;
+        background: var(--s);
+        border-bottom: 1px solid var(--b);
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        -webkit-app-region: drag;
+        z-index: 1000;
+        gap: 10px;
+      }
+      .tb-logo {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 800;
+        font-size: 14px;
+      }
+      .tb-logo .icon {
+        width: 26px;
+        height: 26px;
+        background: var(--ac);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .tb-logo .icon svg {
+        fill: #fff;
+      }
+      .logo-tx span {
+        color: var(--ac);
+      }
+      .logo-sub {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--tx3);
+        letter-spacing: 0.1em;
+      }
+      .tb-sp {
+        flex: 1;
+      }
+      .dep-badge {
+        font-family: var(--mono);
+        font-size: 9px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        letter-spacing: 0.1em;
+        cursor: pointer;
+        -webkit-app-region: no-drag;
+        white-space: nowrap;
+        border: 1px solid transparent;
+      }
+      .dep-ok {
+        background: rgba(60, 255, 160, 0.1);
+        color: var(--ok);
+        border-color: rgba(60, 255, 160, 0.3);
+      }
+      .dep-warn {
+        background: rgba(255, 217, 61, 0.1);
+        color: var(--wa);
+        border-color: rgba(255, 217, 61, 0.3);
+        animation: wp 2s infinite;
+      }
+      @keyframes wp {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+      .tb-ctrl {
+        display: flex;
+        gap: 8px;
+        -webkit-app-region: no-drag;
+      }
+      .tb-btn {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+      }
+      .tb-btn:hover {
+        opacity: 0.7;
+      }
+      .c-close {
+        background: #ff5f57;
+      }
+      .c-min {
+        background: #ffbd2e;
+      }
+      .c-max {
+        background: #28ca41;
+      }
+
+      .app {
+        display: flex;
+        height: 100vh;
+        padding-top: 46px;
+      }
+
+      /* TABS */
+      .tab-bar {
+        display: flex;
+        border-bottom: 1px solid var(--b);
+        background: var(--s);
+        padding: 0 12px;
+        gap: 2px;
+        flex-shrink: 0;
+      }
+      .tab {
+        padding: 9px 12px;
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        color: var(--tx3);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.15s;
+        margin-bottom: -1px;
+        white-space: nowrap;
+      }
+      .tab:hover {
+        color: var(--tx2);
+      }
+      .tab.on {
+        color: var(--ac);
+        border-bottom-color: var(--ac);
+      }
+      .t-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 14px;
+        height: 14px;
+        background: var(--ac);
+        color: #fff;
+        border-radius: 50%;
+        font-size: 7px;
+        margin-left: 4px;
+      }
+
+      /* LEFT */
+      .lp {
+        width: 280px;
+        min-width: 240px;
+        background: var(--s);
+        border-right: 1px solid var(--b);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+      .ps {
+        padding: 11px 14px;
+        border-bottom: 1px solid var(--b);
+        flex-shrink: 0;
+      }
+      .sl {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--tx3);
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        margin-bottom: 7px;
+      }
+      select.sel {
+        width: 100%;
+        background: var(--s2);
+        border: 1px solid var(--b2);
+        color: var(--tx);
+        font-family: var(--mono);
+        font-size: 10px;
+        padding: 7px 9px;
+        border-radius: 7px;
+        cursor: pointer;
+        outline: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='%235a5a7a'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+      }
+      select.sel:focus {
+        border-color: var(--ac);
+      }
+      select.sel option {
+        background: var(--s2);
+      }
+      .p-ind {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 5px;
+      }
+      .p-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--ok);
+        box-shadow: 0 0 5px var(--ok);
+        animation: pulse 2s infinite;
+      }
+      .p-dot.off {
+        background: var(--er);
+        box-shadow: 0 0 5px var(--er);
+        animation: none;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+      .p-txt {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--tx3);
+      }
+      .sr {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 7px;
+      }
+      .sr:last-child {
+        margin-bottom: 0;
+      }
+      .sk {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--tx2);
+      }
+      .spin-btn {
+        width: 22px;
+        height: 22px;
+        background: var(--s3);
+        border: 1px solid var(--b2);
+        color: var(--tx);
+        font-size: 13px;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+      }
+      .spin-btn:hover {
+        border-color: var(--ac);
+        color: var(--ac);
+      }
+      .sv {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--ac);
+        min-width: 20px;
+        text-align: center;
+      }
+      .tg {
+        display: flex;
+        background: var(--s2);
+        border: 1px solid var(--b2);
+        border-radius: 5px;
+        overflow: hidden;
+      }
+      .tg-btn {
+        padding: 4px 8px;
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.1em;
+        color: var(--tx3);
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        transition: all 0.15s;
+      }
+      .tg-btn.on {
+        background: var(--ac);
+        color: #fff;
+      }
+      .ri {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .r-in {
+        width: 44px;
+        background: var(--s3);
+        border: 1px solid var(--b2);
+        color: var(--tx);
+        font-family: var(--mono);
+        font-size: 10px;
+        padding: 4px 6px;
+        border-radius: 5px;
+        outline: none;
+        text-align: center;
+        transition: border-color 0.15s;
+      }
+      .r-in:focus {
+        border-color: var(--ac);
+      }
+      .r-in:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      .r-sep {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--tx3);
+      }
+      .r-cb {
+        width: 13px;
+        height: 13px;
+        accent-color: var(--ac);
+        cursor: pointer;
+      }
+
+      /* PROFILES */
+      .prof-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        max-height: 140px;
+        overflow-y: auto;
+        margin-bottom: 8px;
+      }
+      .prof-list::-webkit-scrollbar {
+        width: 3px;
+      }
+      .prof-list::-webkit-scrollbar-thumb {
+        background: var(--b2);
+        border-radius: 2px;
+      }
+      .prof-item {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 9px;
+        background: var(--s2);
+        border: 1px solid var(--b);
+        border-radius: 7px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .prof-item:hover {
+        border-color: var(--b2);
+      }
+      .prof-item.active {
+        border-color: var(--ac);
+        background: rgba(255, 107, 53, 0.06);
+      }
+      .prof-name {
+        flex: 1;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--tx);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .prof-meta {
+        font-family: var(--mono);
+        font-size: 7px;
+        color: var(--tx3);
+      }
+      .prof-del {
+        background: none;
+        border: none;
+        color: var(--tx3);
+        cursor: pointer;
+        font-size: 10px;
+        padding: 2px 3px;
+        border-radius: 3px;
+        opacity: 0;
+        transition: all 0.15s;
+        flex-shrink: 0;
+      }
+      .prof-item:hover .prof-del {
+        opacity: 1;
+      }
+      .prof-del:hover {
+        color: var(--er);
+      }
+      .prof-empty {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--tx3);
+        text-align: center;
+        padding: 10px 0;
+      }
+      .btn-sp {
+        width: 100%;
+        padding: 7px;
+        background: transparent;
+        border: 1px dashed var(--b2);
+        border-radius: 7px;
+        color: var(--tx3);
+        font-family: var(--mono);
+        font-size: 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .btn-sp:hover {
+        border-color: var(--ac);
+        color: var(--ac);
+      }
+
+      /* STATS & PRINT */
+      .stats {
+        padding: 10px 14px;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 6px;
+        flex-shrink: 0;
+      }
+      .sc {
+        background: var(--s2);
+        border: 1px solid var(--b);
+        border-radius: 7px;
+        padding: 8px;
+        text-align: center;
+      }
+      .sn {
+        font-family: var(--mono);
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--ac);
+        line-height: 1;
+        margin-bottom: 2px;
+      }
+      .slb {
+        font-family: var(--mono);
+        font-size: 7px;
+        color: var(--tx3);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .print-sec {
+        padding: 11px 14px;
+        margin-top: auto;
+        border-top: 1px solid var(--b);
+        flex-shrink: 0;
+      }
+      .btn-print {
+        width: 100%;
+        padding: 11px;
+        background: var(--ac);
+        border: none;
+        border-radius: 9px;
+        color: #fff;
+        font-family: var(--sans);
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s;
+        position: relative;
+        overflow: hidden;
+      }
+      .btn-print::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        );
+      }
+      .btn-print:hover:not(:disabled) {
+        background: var(--ac2);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px var(--acg);
+      }
+      .btn-print:disabled {
+        background: var(--s3);
+        color: var(--tx3);
+        cursor: not-allowed;
+      }
+      .btn-row {
+        display: flex;
+        gap: 5px;
+        margin-top: 5px;
+      }
+      .btn-sec {
+        flex: 1;
+        padding: 6px;
+        background: transparent;
+        border: 1px solid var(--b2);
+        border-radius: 7px;
+        color: var(--tx3);
+        font-family: var(--mono);
+        font-size: 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+        white-space: nowrap;
+      }
+      .btn-sec:hover:not(:disabled) {
+        border-color: var(--inf);
+        color: var(--inf);
+      }
+      .btn-sec.d:hover {
+        border-color: var(--er);
+        color: var(--er);
+      }
+      .btn-sec:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      /* RIGHT */
+      .rp {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-width: 0;
+      }
+      .tc {
+        display: none;
+        flex: 1;
+        overflow: hidden;
+        flex-direction: column;
+      }
+      .tc.on {
+        display: flex;
+      }
+      .toolbar {
+        padding: 9px 14px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        border-bottom: 1px solid var(--b);
+        background: var(--s);
+        flex-shrink: 0;
+      }
+      .btn-add {
+        padding: 6px 11px;
+        background: var(--s3);
+        border: 1px solid var(--b2);
+        border-radius: 7px;
+        color: var(--tx);
+        font-family: var(--mono);
+        font-size: 9px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        transition: all 0.15s;
+        white-space: nowrap;
+      }
+      .btn-add:hover {
+        border-color: var(--ac);
+        color: var(--ac);
+      }
+      .t-div {
+        width: 1px;
+        height: 18px;
+        background: var(--b);
+        flex-shrink: 0;
+      }
+      .t-inf {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--tx3);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .t-sp {
+        flex: 1;
+        min-width: 6px;
+      }
+      .sort-btn {
+        padding: 4px 8px;
+        background: transparent;
+        border: 1px solid var(--b);
+        border-radius: 5px;
+        color: var(--tx3);
+        font-family: var(--mono);
+        font-size: 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+        white-space: nowrap;
+      }
+      .sort-btn:hover {
+        border-color: var(--b2);
+        color: var(--tx2);
+      }
+
+      /* DROP ZONE */
+      .dz-wrap {
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+      }
+      .dz {
+        flex: 1;
+        overflow-y: auto;
+        padding: 13px;
+        position: relative;
+        transition: background 0.15s;
+      }
+      .dz::-webkit-scrollbar {
+        width: 3px;
+      }
+      .dz::-webkit-scrollbar-thumb {
+        background: var(--b2);
+        border-radius: 2px;
+      }
+      .dz.dz-active {
+        background: rgba(255, 107, 53, 0.03);
+        outline: 2px dashed var(--ac);
+        outline-offset: -3px;
+      }
+      .dz-empty {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        pointer-events: none;
+      }
+      .dz-empty.hid {
+        display: none;
+      }
+      .dz-icon {
+        width: 60px;
+        height: 60px;
+        border: 2px dashed var(--b2);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .dz-icon svg {
+        fill: var(--tx3);
+        width: 26px;
+        height: 26px;
+      }
+      .dz-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--tx2);
+      }
+      .dz-sub {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--tx3);
+        text-align: center;
+        line-height: 1.8;
+      }
+      .fmt-wrap {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .fmt {
+        padding: 2px 5px;
+        background: var(--s2);
+        border: 1px solid var(--b);
+        border-radius: 3px;
+        font-family: var(--mono);
+        font-size: 7px;
+        color: var(--tx3);
+        letter-spacing: 0.1em;
+      }
+
+      /* FILE LIST */
+      .fl {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .fi {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 11px;
+        background: var(--s);
+        border: 1px solid var(--b);
+        border-radius: 8px;
+        transition:
+          border-color 0.12s,
+          background 0.12s,
+          opacity 0.12s;
+        position: relative;
+        cursor: default;
+      }
+      .fi.fi-new {
+        animation: sli 0.15s ease;
+      }
+      @keyframes sli {
+        from {
+          opacity: 0;
+          transform: translateY(-4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .fi.drag-src {
+        opacity: 0.35;
+        border-style: dashed;
+      }
+      .fi.drag-over {
+        border-color: var(--ac) !important;
+        background: rgba(255, 107, 53, 0.05) !important;
+      }
+      .fi:hover {
+        border-color: var(--b2);
+        background: var(--s2);
+      }
+      .fi.printing {
+        border-color: var(--wa);
+      }
+      .fi.done {
+        border-color: var(--ok);
+        opacity: 0.6;
+      }
+      .fi.error {
+        border-color: var(--er);
+      }
+      .fi.sel {
+        border-color: var(--ac);
+        background: rgba(255, 107, 53, 0.05);
+      }
+      .dh {
+        color: var(--tx3);
+        font-size: 14px;
+        cursor: grab;
+        flex-shrink: 0;
+        opacity: 0.3;
+        line-height: 1;
+        transition: opacity 0.12s;
+      }
+      .fi:hover .dh {
+        opacity: 0.8;
+      }
+      .dh:active {
+        cursor: grabbing;
+      }
+      .ford {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--tx3);
+        min-width: 14px;
+        text-align: right;
+        flex-shrink: 0;
+      }
+      .fbadge {
+        width: 30px;
+        height: 30px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--mono);
+        font-size: 7px;
+        font-weight: 700;
+        flex-shrink: 0;
+        text-transform: uppercase;
+      }
+      .bp {
+        background: rgba(255, 77, 109, 0.15);
+        color: #ff4d6d;
+        border: 1px solid rgba(255, 77, 109, 0.3);
+      }
+      .bd,
+      .bdc {
+        background: rgba(60, 120, 255, 0.15);
+        color: #3c78ff;
+        border: 1px solid rgba(60, 120, 255, 0.3);
+      }
+      .bx,
+      .bxc {
+        background: rgba(60, 255, 160, 0.15);
+        color: #3cffa0;
+        border: 1px solid rgba(60, 255, 160, 0.3);
+      }
+      .bpt,
+      .bptx {
+        background: rgba(255, 150, 50, 0.15);
+        color: #ff9632;
+        border: 1px solid rgba(255, 150, 50, 0.3);
+      }
+      .bt {
+        background: rgba(150, 150, 200, 0.15);
+        color: #9898c8;
+        border: 1px solid rgba(150, 150, 200, 0.3);
+      }
+      .bi {
+        background: rgba(200, 100, 255, 0.15);
+        color: #c864ff;
+        border: 1px solid rgba(200, 100, 255, 0.3);
+      }
+      .bo {
+        background: var(--s3);
+        color: var(--tx3);
+        border: 1px solid var(--b);
+      }
+      .blo {
+        background: rgba(0, 200, 180, 0.15);
+        color: #00c8b4;
+        border: 1px solid rgba(0, 200, 180, 0.3);
+      }
+      .brtf {
+        background: rgba(180, 100, 255, 0.15);
+        color: #b464ff;
+        border: 1px solid rgba(180, 100, 255, 0.3);
+      }
+      .bhtm {
+        background: rgba(255, 160, 0, 0.15);
+        color: #ffa000;
+        border: 1px solid rgba(255, 160, 0, 0.3);
+      }
+      .fi.multi-sel {
+        border-color: var(--inf);
+        background: rgba(91, 200, 255, 0.06);
+        box-shadow: inset 3px 0 0 var(--inf);
+      }
+      .fi-err-msg {
+        font-size: 9px;
+        color: var(--er);
+        font-family: var(--mono);
+        margin-top: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 320px;
+        opacity: 0.85;
+      }
+      .finfo {
+        flex: 1;
+        min-width: 0;
+      }
+      .fn {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--tx);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 2px;
+      }
+      .fm {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .fsz {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--tx3);
+      }
+      .fpg {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--inf);
+      }
+      .frng {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--ac);
+      }
+      .fst {
+        font-family: var(--mono);
+        font-size: 7px;
+        letter-spacing: 0.1em;
+        padding: 2px 5px;
+        border-radius: 3px;
+        flex-shrink: 0;
+      }
+      .st-q {
+        background: var(--s3);
+        color: var(--tx3);
+      }
+      .st-pr {
+        background: rgba(255, 217, 61, 0.15);
+        color: var(--wa);
+      }
+      .st-ok {
+        background: rgba(60, 255, 160, 0.15);
+        color: var(--ok);
+      }
+      .st-er {
+        background: rgba(255, 77, 109, 0.15);
+        color: var(--er);
+      }
+      .fa {
+        display: flex;
+        gap: 3px;
+        opacity: 0;
+        transition: opacity 0.12s;
+        flex-shrink: 0;
+      }
+      .fi:hover .fa {
+        opacity: 1;
+      }
+      .fab {
+        width: 22px;
+        height: 22px;
+        background: var(--s3);
+        border: 1px solid var(--b2);
+        border-radius: 4px;
+        color: var(--tx3);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.12s;
+        font-size: 9px;
+        flex-shrink: 0;
+      }
+      .fab:hover {
+        border-color: var(--er);
+        color: var(--er);
+      }
+      .fab.eye:hover {
+        border-color: var(--inf);
+        color: var(--inf);
+      }
+
+      /* PREVIEW */
+      .prev-panel {
+        width: 0;
+        background: var(--s);
+        border-left: 1px solid var(--b);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        flex-shrink: 0;
+        transition: width 0.22s ease;
+      }
+      .prev-panel.open {
+        width: 265px;
+      }
+      .prev-hd {
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--b);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+      }
+      .prev-title {
+        font-family: var(--mono);
+        font-size: 8px;
+        letter-spacing: 0.15em;
+        color: var(--tx3);
+        text-transform: uppercase;
+      }
+      .prev-close {
+        background: none;
+        border: none;
+        color: var(--tx3);
+        cursor: pointer;
+        font-size: 13px;
+        padding: 2px 4px;
+        border-radius: 3px;
+        transition: color 0.12s;
+      }
+      .prev-close:hover {
+        color: var(--tx);
+      }
+      .prev-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .prev-body::-webkit-scrollbar {
+        width: 3px;
+      }
+      .prev-body::-webkit-scrollbar-thumb {
+        background: var(--b2);
+        border-radius: 2px;
+      }
+      .prev-img-wrap {
+        background: var(--s2);
+        border: 1px solid var(--b);
+        border-radius: 7px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 160px;
+      }
+      .prev-img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .prev-iframe {
+        width: 100%;
+        height: 220px;
+        border: none;
+        border-radius: 7px;
+        background: var(--s2);
+      }
+      .prev-msg {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--tx3);
+        text-align: center;
+        padding: 24px 8px;
+        line-height: 1.8;
+      }
+      .prev-nav {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+      }
+      .prev-nav-btn {
+        padding: 4px 9px;
+        background: var(--s3);
+        border: 1px solid var(--b2);
+        border-radius: 5px;
+        color: var(--tx2);
+        font-family: var(--mono);
+        font-size: 9px;
+        cursor: pointer;
+        transition: all 0.12s;
+      }
+      .prev-nav-btn:hover:not(:disabled) {
+        border-color: var(--ac);
+        color: var(--ac);
+      }
+      .prev-nav-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+      .prev-pi {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--tx3);
+      }
+      .prev-fn {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--tx3);
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .prev-note {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--tx3);
+        text-align: center;
+        line-height: 1.6;
+        background: var(--s2);
+        border-radius: 6px;
+        padding: 8px;
+        border: 1px solid var(--b);
+      }
+
+      /* HISTORY */
+      .ht {
+        padding: 9px 14px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        border-bottom: 1px solid var(--b);
+        background: var(--s);
+        flex-shrink: 0;
+      }
+      .h-search {
+        flex: 1;
+        background: var(--s2);
+        border: 1px solid var(--b2);
+        color: var(--tx);
+        font-family: var(--mono);
+        font-size: 10px;
+        padding: 6px 9px;
+        border-radius: 7px;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      .h-search:focus {
+        border-color: var(--ac);
+      }
+      .btn-ch {
+        padding: 5px 9px;
+        background: transparent;
+        border: 1px solid var(--b2);
+        border-radius: 7px;
+        color: var(--tx3);
+        font-family: var(--mono);
+        font-size: 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+        white-space: nowrap;
+      }
+      .btn-ch:hover {
+        border-color: var(--er);
+        color: var(--er);
+      }
+      .h-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .h-list::-webkit-scrollbar {
+        width: 3px;
+      }
+      .h-list::-webkit-scrollbar-thumb {
+        background: var(--b2);
+        border-radius: 2px;
+      }
+      .h-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        gap: 10px;
+      }
+      .h-empty p {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--tx3);
+        letter-spacing: 0.1em;
+      }
+      .hi {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 11px;
+        background: var(--s);
+        border: 1px solid var(--b);
+        border-radius: 8px;
+        transition: all 0.15s;
+      }
+      .hi:hover {
+        border-color: var(--b2);
+        background: var(--s2);
+      }
+      .hi-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .hi-name {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--tx);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 3px;
+      }
+      .hi-meta {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+      .htag {
+        font-family: var(--mono);
+        font-size: 7px;
+        letter-spacing: 0.05em;
+        padding: 1px 5px;
+        border-radius: 3px;
+      }
+      .t-ok {
+        background: rgba(60, 255, 160, 0.1);
+        color: var(--ok);
+      }
+      .t-er {
+        background: rgba(255, 77, 109, 0.1);
+        color: var(--er);
+      }
+      .t-pr {
+        background: rgba(91, 200, 255, 0.1);
+        color: var(--inf);
+      }
+      .t-tm {
+        background: var(--s3);
+        color: var(--tx3);
+      }
+      .hi-del {
+        width: 20px;
+        height: 20px;
+        background: transparent;
+        border: none;
+        color: var(--tx3);
+        cursor: pointer;
+        font-size: 9px;
+        border-radius: 3px;
+        transition: color 0.12s;
+        opacity: 0;
+        flex-shrink: 0;
+      }
+      .hi:hover .hi-del {
+        opacity: 1;
+      }
+      .hi-del:hover {
+        color: var(--er);
+      }
+
+      /* MODALS */
+      .modal-ov {
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 10, 15, 0.9);
+        backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 900;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+      }
+      .modal-ov.vis {
+        opacity: 1;
+        pointer-events: all;
+      }
+      .modal {
+        background: var(--s);
+        border: 1px solid var(--b2);
+        border-radius: 13px;
+        padding: 22px;
+        width: 420px;
+        max-width: 92vw;
+        animation: mi 0.2s ease;
+      }
+      @keyframes mi {
+        from {
+          transform: scale(0.96);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .m-title {
+        font-size: 16px;
+        font-weight: 800;
+        margin-bottom: 4px;
+      }
+      .m-sub {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--tx3);
+        margin-bottom: 14px;
+        line-height: 1.7;
+      }
+      .m-input {
+        width: 100%;
+        background: var(--s2);
+        border: 1px solid var(--b2);
+        color: var(--tx);
+        font-family: var(--mono);
+        font-size: 11px;
+        padding: 8px 10px;
+        border-radius: 7px;
+        outline: none;
+        margin-bottom: 10px;
+        transition: border-color 0.15s;
+      }
+      .m-input:focus {
+        border-color: var(--ac);
+      }
+      .m-row {
+        display: flex;
+        gap: 7px;
+      }
+      .m-btn {
+        flex: 1;
+        padding: 9px;
+        border: none;
+        border-radius: 8px;
+        font-family: var(--sans);
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .m-btn.pri {
+        background: var(--ac);
+        color: #fff;
+      }
+      .m-btn.pri:hover {
+        background: var(--ac2);
+      }
+      .m-btn.sec {
+        background: var(--s3);
+        color: var(--tx2);
+        border: 1px solid var(--b2);
+      }
+      .m-btn.sec:hover {
+        color: var(--tx);
+      }
+      .dep-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 11px;
+        background: var(--s2);
+        border: 1px solid var(--b);
+        border-radius: 8px;
+        margin-bottom: 7px;
+      }
+      .dep-ic {
+        width: 32px;
+        height: 32px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        flex-shrink: 0;
+      }
+      .dep-ic.ok {
+        background: rgba(60, 255, 160, 0.15);
+      }
+      .dep-ic.warn {
+        background: rgba(255, 217, 61, 0.15);
+      }
+      .dep-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .dep-name {
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 2px;
+      }
+      .dep-desc {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--tx3);
+        line-height: 1.5;
+      }
+      .dep-ok-tag {
+        font-family: var(--mono);
+        font-size: 8px;
+        padding: 2px 5px;
+        border-radius: 3px;
+        background: rgba(60, 255, 160, 0.1);
+        color: var(--ok);
+        display: inline-block;
+        margin-top: 3px;
+      }
+      .dep-link {
+        display: block;
+        margin-top: 3px;
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--ac);
+      }
+
+      /* PROGRESS */
+      .prog-ov {
+        position: fixed;
+        inset: 46px 0 0;
+        background: rgba(10, 10, 15, 0.94);
+        backdrop-filter: blur(14px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        z-index: 500;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+      }
+      .prog-ov.vis {
+        opacity: 1;
+        pointer-events: all;
+      }
+      .prog-ic {
+        width: 60px;
+        height: 60px;
+        border-radius: 15px;
+        background: var(--ac);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: pa 0.8s ease infinite alternate;
+      }
+      @keyframes pa {
+        from {
+          transform: scale(0.95);
+          box-shadow: 0 0 14px var(--acg);
+        }
+        to {
+          transform: scale(1.05);
+          box-shadow: 0 0 30px var(--acg);
+        }
+      }
+      .prog-ic svg {
+        fill: #fff;
+        width: 30px;
+        height: 30px;
+      }
+      .prog-title {
+        font-size: 18px;
+        font-weight: 800;
+      }
+      .prog-sub {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--tx3);
+        text-align: center;
+        max-width: 320px;
+      }
+      .prog-bw {
+        width: 260px;
+        height: 3px;
+        background: var(--s2);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .prog-bar {
+        height: 100%;
+        background: var(--ac);
+        border-radius: 2px;
+        transition: width 0.3s ease;
+        box-shadow: 0 0 5px var(--acg);
+      }
+
+      /* PER-FILE SETTINGS */
+      .fi-settings {
+        display: none;
+        flex-direction: column;
+        gap: 5px;
+        padding: 8px 10px;
+        background: var(--s2);
+        border: 1px solid var(--b2);
+        border-radius: 7px;
+        margin-top: 4px;
+        animation: sli 0.12s ease;
+      }
+      .fi-settings.open {
+        display: flex;
+      }
+      .fi-full {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .fi-settings-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .fi-settings-label {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--tx3);
+        min-width: 48px;
+      }
+      .fi-settings-val {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--ac);
+        font-weight: 700;
+      }
+      .fi-spin {
+        width: 19px;
+        height: 19px;
+        background: var(--s3);
+        border: 1px solid var(--b2);
+        color: var(--tx);
+        font-size: 11px;
+        border-radius: 3px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.12s;
+        flex-shrink: 0;
+      }
+      .fi-spin:hover {
+        border-color: var(--ac);
+        color: var(--ac);
+      }
+      .fi-tg {
+        display: flex;
+        background: var(--s3);
+        border: 1px solid var(--b2);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .fi-tg-btn {
+        padding: 3px 7px;
+        font-family: var(--mono);
+        font-size: 7px;
+        letter-spacing: 0.1em;
+        color: var(--tx3);
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        transition: all 0.12s;
+      }
+      .fi-tg-btn.on {
+        background: var(--ac);
+        color: #fff;
+      }
+      .fi-range-in {
+        width: 40px;
+        background: var(--s3);
+        border: 1px solid var(--b2);
+        color: var(--tx);
+        font-family: var(--mono);
+        font-size: 9px;
+        padding: 3px 5px;
+        border-radius: 4px;
+        outline: none;
+        text-align: center;
+      }
+      .fi-range-in:focus {
+        border-color: var(--ac);
+      }
+      .fi-reset {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--tx3);
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        transition: color 0.12s;
+      }
+      .fi-reset:hover {
+        color: var(--er);
+      }
+      /* KEYBOARD HINT */
+      .kb-hint {
+        position: fixed;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(17, 17, 24, 0.92);
+        border: 1px solid var(--b2);
+        border-radius: 8px;
+        padding: 7px 14px;
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--tx3);
+        display: flex;
+        gap: 12px;
+        z-index: 800;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      .kb-hint.vis {
+        opacity: 1;
+      }
+      .kb-key {
+        background: var(--s3);
+        border: 1px solid var(--b2);
+        border-radius: 3px;
+        padding: 1px 5px;
+        color: var(--tx2);
+        margin-right: 3px;
+      }
+      /* TOAST */
+      .toast-c {
+        position: fixed;
+        bottom: 14px;
+        right: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        z-index: 999;
+      }
+      .toast {
+        padding: 8px 11px;
+        background: var(--s2);
+        border: 1px solid var(--b2);
+        border-radius: 7px;
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--tx);
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        animation: ti 0.2s ease;
+        min-width: 180px;
+        max-width: 260px;
+      }
+      @keyframes ti {
+        from {
+          opacity: 0;
+          transform: translateX(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      .toast.success {
+        border-color: var(--ok);
+      }
+      .toast.error {
+        border-color: var(--er);
+      }
+      .toast.warning {
+        border-color: var(--wa);
+      }
+      .toast.info {
+        border-color: var(--inf);
+      }
+      .toast-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .toast.success .toast-dot {
+        background: var(--ok);
+      }
+      .toast.error .toast-dot {
+        background: var(--er);
+      }
+      .toast.warning .toast-dot {
+        background: var(--wa);
+      }
+      .toast.info .toast-dot {
+        background: var(--inf);
+      }
+      /* WATCH FOLDER */
+      .watch-section {
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--b);
+        flex-shrink: 0;
+      }
+      .watch-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-top: 6px;
+        max-height: 80px;
+        overflow-y: auto;
+      }
+      .watch-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 8px;
+        background: var(--s2);
+        border: 1px solid var(--b);
+        border-radius: 6px;
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--tx2);
+      }
+      .watch-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--ok);
+        box-shadow: 0 0 4px var(--ok);
+        flex-shrink: 0;
+        animation: pulse 2s infinite;
+      }
+      .watch-name {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .watch-stop {
+        background: none;
+        border: none;
+        color: var(--tx3);
+        cursor: pointer;
+        font-size: 10px;
+        padding: 1px 3px;
+        border-radius: 2px;
+        transition: color 0.12s;
+      }
+      .watch-stop:hover {
+        color: var(--er);
+      }
+      .watch-mode-badge {
+        font-family: var(--mono);
+        font-size: 7px;
+        padding: 1px 5px;
+        background: rgba(60, 255, 160, 0.1);
+        color: var(--ok);
+        border-radius: 3px;
+        border: 1px solid rgba(60, 255, 160, 0.2);
+      }
+      /* N-UP / DUPLEX */
+      .adv-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 7px;
+      }
+      .nup-sel {
+        background: var(--s2);
+        border: 1px solid var(--b2);
+        color: var(--tx);
+        font-family: var(--mono);
+        font-size: 9px;
+        padding: 4px 7px;
+        border-radius: 5px;
+        cursor: pointer;
+        outline: none;
+      }
+      .nup-sel:focus {
+        border-color: var(--ac);
+      }
+      /* ABOUT MODAL */
+      .about-logo {
+        width: 56px;
+        height: 56px;
+        background: var(--ac);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 12px;
+        box-shadow: 0 4px 20px var(--acg);
+      }
+      .about-logo svg {
+        fill: #fff;
+        width: 28px;
+        height: 28px;
+      }
+      .about-version {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--tx3);
+        text-align: center;
+        margin-bottom: 14px;
+      }
+      .about-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-bottom: 14px;
+      }
+      .about-dep {
+        padding: 8px 10px;
+        background: var(--s2);
+        border: 1px solid var(--b);
+        border-radius: 7px;
+      }
+      .about-dep-name {
+        font-size: 11px;
+        font-weight: 700;
+        margin-bottom: 2px;
+      }
+      .about-dep-status {
+        font-family: var(--mono);
+        font-size: 8px;
+      }
+      .about-links {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .about-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 10px;
+        background: var(--s2);
+        border: 1px solid var(--b);
+        border-radius: 7px;
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--ac);
+        cursor: pointer;
+        transition: border-color 0.12s;
+      }
+      .about-link:hover {
+        border-color: var(--ac);
+      }
+      /* RETRY button on error items */
+      .fab.retry:hover {
+        border-color: var(--wa);
+        color: var(--wa);
+      }
+      /* Duplicate flash animation */
+      @keyframes dupFlash {
+        0%,
+        100% {
+          background: transparent;
+        }
+        50% {
+          background: rgba(255, 217, 61, 0.13);
+          border-color: var(--wa);
+        }
+      }
+      .dup-flash {
+        animation: dupFlash 0.9s ease;
+      }
+      /* Recent files list */
+      .rec-list {
+        flex: 1;
+        overflow-y: auto;
+        margin: 8px 0;
+      }
+      .rec-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 6px;
+        border-radius: 6px;
+        cursor: default;
+        transition: background 0.15s;
+      }
+      .rec-item:hover {
+        background: var(--s3);
+      }
+      .rec-name {
+        flex: 1;
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--tx2);
+        font-family: var(--mono);
+      }
+      .rec-add {
+        font-size: 16px;
+        color: var(--tx3);
+        line-height: 1;
+        cursor: pointer;
+        padding: 0 3px;
+        transition: color 0.15s;
+        user-select: none;
+      }
+      .rec-item:hover .rec-add {
+        color: var(--ac);
+      }
+      /* Lifetime stats row */
+      .stats-life {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px solid var(--b);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- TITLEBAR -->
+    <div class="tb">
+      <div class="tb-logo">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" width="14" height="14">
+            <path
+              d="M6 2h12v6H6zm0 10h12v10H6zm-2-4a2 2 0 0 0-2 2v6h2v-2h16v2h2v-6a2 2 0 0 0-2-2H4zm14 3a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"
+            />
+          </svg>
+        </div>
+        <span class="logo-tx">Lazy<span>Print</span></span>
+      </div>
+      <span class="logo-sub">Cara cepat print semua dokumen</span>
+      <div class="tb-sp"></div>
+      <span class="dep-badge dep-ok" id="depBadge" onclick="openDepModal()"
+        >● GS OK</span
+      >
+      <span
+        class="dep-badge"
+        style="
+          background: rgba(255, 107, 53, 0.1);
+          color: var(--ac);
+          border-color: rgba(255, 107, 53, 0.3);
+          cursor: pointer;
+        "
+        onclick="openAbout()"
+        >v1.6.0</span
+      >
+      <div class="tb-ctrl">
+        <button
+          class="tb-btn c-min"
+          onclick="window.electronAPI?.minimizeWindow()"
+        ></button>
+        <button
+          class="tb-btn c-max"
+          onclick="window.electronAPI?.maximizeWindow()"
+        ></button>
+        <button
+          class="tb-btn c-close"
+          onclick="window.electronAPI?.closeWindow()"
+        ></button>
+      </div>
+    </div>
+
+    <div class="app">
+      <!-- LEFT -->
+      <div class="lp">
+        <div class="tab-bar">
+          <div class="tab on" id="lt-set" onclick="lTab('set')">SETTINGS</div>
+          <div class="tab" id="lt-prof" onclick="lTab('prof')">
+            PROFILES
+            <span class="t-badge" id="profBadge" style="display: none">0</span>
+          </div>
+          <div class="tab" id="lt-rec" onclick="lTab('rec')">RECENT</div>
+        </div>
+        <!-- SETTINGS -->
+        <div
+          id="lc-set"
+          style="
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+          "
+        >
+          <div class="ps">
+            <div class="sl">Printer</div>
+            <select class="sel" id="printerSel">
+              <option>Loading...</option>
+            </select>
+            <div class="p-ind">
+              <div class="p-dot" id="pDot"></div>
+              <span class="p-txt" id="pTxt">Loading...</span>
+            </div>
+          </div>
+          <div class="ps">
+            <div class="sl">Print Settings</div>
+            <div class="sr">
+              <span class="sk">COPIES</span>
+              <div style="display: flex; align-items: center; gap: 5px">
+                <button class="spin-btn" onclick="chCopies(-1)">−</button>
+                <span class="sv" id="copiesV">1</span>
+                <button class="spin-btn" onclick="chCopies(1)">+</button>
+              </div>
+            </div>
+            <div class="sr">
+              <span class="sk">ORIENTATION</span>
+              <div class="tg">
+                <button
+                  class="tg-btn on"
+                  id="oPort"
+                  onclick="setOri('portrait')"
+                >
+                  PORT
+                </button>
+                <button class="tg-btn" id="oLand" onclick="setOri('landscape')">
+                  LAND
+                </button>
+              </div>
+            </div>
+            <div class="sr">
+              <span class="sk">COLOR</span>
+              <div class="tg">
+                <button
+                  class="tg-btn on"
+                  id="cColor"
+                  onclick="setColor('color')"
+                >
+                  COLOR
+                </button>
+                <button class="tg-btn" id="cBW" onclick="setColor('bw')">
+                  B&W
+                </button>
+              </div>
+            </div>
+            <div class="sr">
+              <span class="sk">PAPER SIZE</span>
+              <select
+                class="sel"
+                id="paperSel"
+                style="width: auto; font-size: 9px; padding: 4px 8px"
+                onchange="setPaper(this.value)"
+              >
+                <option value="a4">A4 (210×297mm)</option>
+                <option value="f4">F4 / Folio (210×330mm)</option>
+                <option value="a3">A3 (297×420mm)</option>
+                <option value="a5">A5 (148×210mm)</option>
+                <option value="letter">Letter (216×279mm)</option>
+                <option value="legal">Legal (216×356mm)</option>
+                <option value="b5">B5 (176×250mm)</option>
+              </select>
+            </div>
+          </div>
+          <div class="ps">
+            <div class="sl">Page Range</div>
+            <div class="sr" style="margin-bottom: 7px">
+              <label
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 6px;
+                  cursor: pointer;
+                "
+              >
+                <input
+                  type="checkbox"
+                  class="r-cb"
+                  id="rangeChk"
+                  onchange="toggleRange()"
+                />
+                <span class="sk">Enable range</span>
+              </label>
+            </div>
+            <div class="sr">
+              <span class="sk">PAGES</span>
+              <div class="ri">
+                <input
+                  type="number"
+                  class="r-in"
+                  id="pageFrom"
+                  placeholder="1"
+                  min="1"
+                  disabled
+                />
+                <span class="r-sep">—</span>
+                <input
+                  type="number"
+                  class="r-in"
+                  id="pageTo"
+                  placeholder="end"
+                  min="1"
+                  disabled
+                />
+              </div>
+            </div>
+            <div
+              style="
+                margin-top: 5px;
+                font-family: var(--mono);
+                font-size: 8px;
+                color: var(--tx3);
+                line-height: 1.5;
+              "
+              id="rangeInfo"
+            >
+              Klik 👁 pada file untuk preview & cek halaman
+            </div>
+          </div>
+          <!-- N-UP / DUPLEX -->
+          <div class="ps">
+            <div class="sl">Advanced Print</div>
+            <div class="adv-row">
+              <span class="sk">N-UP</span>
+              <select
+                class="nup-sel"
+                id="nupSel"
+                onchange="
+                  S.nup = parseInt(this.value);
+                  persistSettings();
+                "
+              >
+                <option value="1">1 halaman/lembar</option>
+                <option value="2">2 halaman/lembar</option>
+                <option value="4">4 halaman/lembar</option>
+              </select>
+            </div>
+            <div class="adv-row" style="margin-bottom: 0">
+              <span class="sk">DUPLEX</span>
+              <div class="tg">
+                <button
+                  class="tg-btn on"
+                  id="duplexOff"
+                  onclick="setDuplex(false)"
+                >
+                  SINGLE
+                </button>
+                <button class="tg-btn" id="duplexOn" onclick="setDuplex(true)">
+                  DOUBLE
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- WATCH FOLDER -->
+          <div class="watch-section">
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+              "
+            >
+              <div class="sl" style="margin-bottom: 0">Watch Folder</div>
+              <button
+                class="btn-add"
+                style="padding: 4px 9px; font-size: 8px"
+                onclick="addWatchFolder()"
+              >
+                + Add
+              </button>
+            </div>
+            <div class="watch-list" id="watchList">
+              <div
+                style="
+                  font-family: var(--mono);
+                  font-size: 8px;
+                  color: var(--tx3);
+                  padding: 4px 0;
+                "
+              >
+                Tidak ada folder yang di-watch
+              </div>
+            </div>
+          </div>
+          <div class="stats">
+            <div class="sc">
+              <div class="sn" id="stTotal">0</div>
+              <div class="slb">Total</div>
+            </div>
+            <div class="sc">
+              <div class="sn" id="stDone" style="color: var(--ok)">0</div>
+              <div class="slb">Done</div>
+            </div>
+            <div class="sc">
+              <div class="sn" id="stErr" style="color: var(--er)">0</div>
+              <div class="slb">Error</div>
+            </div>
+          </div>
+          <div class="stats-life">
+            <div class="sc">
+              <div class="sn" id="stAllTime" style="font-size: 13px">—</div>
+              <div class="slb">All Time</div>
+            </div>
+            <div class="sc">
+              <div
+                class="sn"
+                id="stRate"
+                style="color: var(--ok); font-size: 13px"
+              >
+                —
+              </div>
+              <div class="slb">Success %</div>
+            </div>
+          </div>
+          <div class="print-sec">
+            <button
+              class="btn-print"
+              id="btnPrint"
+              onclick="startPrint()"
+              disabled
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="currentColor"
+              >
+                <path
+                  d="M6 2h12v6H6zm0 10h12v10H6zm-2-4a2 2 0 0 0-2 2v6h2v-2h16v2h2v-6a2 2 0 0 0-2-2H4zm14 3a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"
+                />
+              </svg>
+              Print All Documents
+            </button>
+            <div class="btn-row">
+              <button
+                class="btn-sec"
+                id="btnToPdf"
+                onclick="printToPdf()"
+                disabled
+              >
+                📄 Export PDF
+              </button>
+              <button class="btn-sec d" onclick="clearAll()">✕ Clear</button>
+            </div>
+            <div class="btn-row" style="margin-top: 6px">
+              <button
+                id="btnSound"
+                class="btn-sec"
+                onclick="toggleSound()"
+                style="flex: 1; font-size: 10px"
+              >
+                🔔 Suara On
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- PROFILES -->
+        <div
+          id="lc-prof"
+          style="
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+            padding: 12px 14px;
+          "
+        >
+          <div class="sl">Saved Profiles</div>
+          <div class="prof-list" id="profList">
+            <div class="prof-empty">Belum ada profile</div>
+          </div>
+          <button class="btn-sp" onclick="openSaveProfModal()">
+            + Simpan Settings Sekarang
+          </button>
+          <div
+            style="
+              margin-top: 10px;
+              font-family: var(--mono);
+              font-size: 8px;
+              color: var(--tx3);
+              line-height: 1.7;
+            "
+          >
+            Menyimpan: printer, copies,<br />orientation, color mode
+          </div>
+        </div>
+        <!-- RECENT FILES -->
+        <div
+          id="lc-rec"
+          style="
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+            padding: 12px 14px;
+          "
+        >
+          <div class="sl">File Terakhir Dicetak</div>
+          <div class="rec-list" id="recList">
+            <div class="prof-empty">Belum ada riwayat</div>
+          </div>
+          <div
+            style="
+              margin-top: 8px;
+              font-family: var(--mono);
+              font-size: 8px;
+              color: var(--tx3);
+              line-height: 1.7;
+            "
+          >
+            Klik + untuk tambah ke queue
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="rp">
+        <div class="tab-bar">
+          <div class="tab on" id="rt-queue" onclick="rTab('queue')">
+            QUEUE
+            <span class="t-badge" id="qBadge" style="display: none">0</span>
+          </div>
+          <div class="tab" id="rt-hist" onclick="rTab('hist')">
+            HISTORY
+            <span class="t-badge" id="hBadge" style="display: none">0</span>
+          </div>
+        </div>
+        <!-- QUEUE -->
+        <div class="tc on" id="rc-queue">
+          <div class="toolbar">
+            <button class="btn-add" onclick="openFileDlg()">
+              <svg
+                viewBox="0 0 24 24"
+                width="11"
+                height="11"
+                fill="currentColor"
+              >
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" />
+              </svg>
+              Add Files
+            </button>
+            <div class="t-div"></div>
+            <span class="t-inf" id="tInfo">DROP FILES TO QUEUE</span>
+            <div class="t-sp"></div>
+            <button class="sort-btn" onclick="sortName()">⇅ Name</button>
+            <button class="sort-btn" onclick="sortType()">⇅ Type</button>
+            <button class="sort-btn" onclick="revOrder()">⇅ Rev</button>
+          </div>
+          <div class="dz-wrap">
+            <div class="dz" id="dropZone">
+              <div class="dz-empty" id="dzEmpty">
+                <div class="dz-icon">
+                  <svg viewBox="0 0 24 24">
+                    <path
+                      d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"
+                    />
+                  </svg>
+                </div>
+                <div class="dz-title">Drop Dokumen di Sini</div>
+                <div class="dz-sub">
+                  Drag & drop dari Explorer / Finder<br />atau klik Add Files<br />⠿
+                  Drag item di list untuk reorder
+                </div>
+                <div class="fmt-wrap">
+                  <span class="fmt">PDF</span><span class="fmt">DOCX</span
+                  ><span class="fmt">XLSX</span> <span class="fmt">PPTX</span
+                  ><span class="fmt">TXT</span><span class="fmt">PNG/JPG</span>
+                </div>
+              </div>
+              <div class="fl" id="fileList"></div>
+            </div>
+            <!-- PREVIEW -->
+            <div class="prev-panel" id="prevPanel">
+              <div class="prev-hd">
+                <span class="prev-title">// Preview</span>
+                <button class="prev-close" onclick="closePreview()">✕</button>
+              </div>
+              <div class="prev-body" id="prevBody">
+                <div class="prev-msg">Klik 👁 pada file<br />untuk preview</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- HISTORY -->
+        <div class="tc" id="rc-hist">
+          <div class="ht">
+            <input
+              type="text"
+              class="h-search"
+              id="hSearch"
+              placeholder="Cari nama file, printer..."
+              oninput="filterHist()"
+            />
+            <button class="btn-ch" onclick="clearHist()">🗑 Clear</button>
+          </div>
+          <div class="h-list" id="hList">
+            <div class="h-empty"><p>Belum ada riwayat print</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DEP -->
+    <div class="modal-ov" id="depModal">
+      <div class="modal">
+        <div class="m-title">Dependencies</div>
+        <div class="m-sub">Tools yang dibutuhkan Lazy Print</div>
+        <div id="depContent"></div>
+        <button
+          class="m-btn sec"
+          style="width: 100%; margin-top: 4px"
+          onclick="closeModal('depModal')"
+        >
+          Tutup
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL PROFILE -->
+    <div class="modal-ov" id="profModal">
+      <div class="modal">
+        <div class="m-title">Simpan Print Profile</div>
+        <div class="m-sub" id="profModalSub">-</div>
+        <input
+          type="text"
+          class="m-input"
+          id="profNameIn"
+          placeholder="Nama profile..."
+        />
+        <div class="m-row">
+          <button class="m-btn sec" onclick="closeModal('profModal')">
+            Batal
+          </button>
+          <button class="m-btn pri" onclick="saveProf()">Simpan</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL PDF SUCCESS -->
+    <!-- ABOUT MODAL -->
+    <div class="modal-ov" id="aboutModal">
+      <div class="modal" style="width: 380px">
+        <div class="about-logo">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M6 2h12v6H6zm0 10h12v10H6zm-2-4a2 2 0 0 0-2 2v6h2v-2h16v2h2v-6a2 2 0 0 0-2-2H4zm14 3a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"
+            />
+          </svg>
+        </div>
+        <div
+          style="
+            text-align: center;
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 4px;
+          "
+        >
+          Lazy<span style="color: var(--ac)">Print</span>
+        </div>
+        <div class="about-version">
+          v1.6.0 · Batch Document Printing · Built with Electron
+        </div>
+        <div class="about-grid" id="aboutDepGrid"><!-- filled by JS --></div>
+        <div class="about-links">
+          <div
+            class="about-link"
+            onclick="
+              window.open('https://www.ghostscript.com/releases/gsdnld.html')
+            "
+          >
+            📦 <span>Download Ghostscript (PDF engine)</span>
+          </div>
+          <div
+            class="about-link"
+            onclick="window.open('https://www.libreoffice.org/download/')"
+          >
+            📦 <span>Download LibreOffice (Office engine)</span>
+          </div>
+          <div
+            class="about-link"
+            onclick="window.open('https://www.sumatrapdfreader.org')"
+          >
+            📦 <span>Download SumatraPDF (PDF fallback)</span>
+          </div>
+        </div>
+        <div
+          style="
+            margin-top: 12px;
+            font-family: var(--mono);
+            font-size: 8px;
+            color: var(--tx3);
+            text-align: center;
+            line-height: 1.8;
+          "
+        >
+          Print berjalan 100% background — tidak ada jendela Office yang
+          terbuka<br />
+          Keyboard: Ctrl+O buka · Ctrl+P print · Del hapus · Ctrl+Z undo ·
+          Ctrl+↑↓ reorder · Space preview · ←→ nav · ? hints
+        </div>
+        <button
+          class="m-btn sec"
+          style="width: 100%; margin-top: 12px"
+          onclick="closeModal('aboutModal')"
+        >
+          Tutup
+        </button>
+      </div>
+    </div>
+
+    <div class="modal-ov" id="pdfOkModal">
+      <div class="modal">
+        <div class="m-title">✅ PDF Berhasil!</div>
+        <div class="m-sub" id="pdfOkPath" style="word-break: break-all"></div>
+        <div class="m-row">
+          <button class="m-btn sec" onclick="closeModal('pdfOkModal')">
+            Tutup
+          </button>
+          <button class="m-btn pri" onclick="openOutPdf()">Buka PDF</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROGRESS -->
+    <div class="prog-ov" id="progOv">
+      <div class="prog-ic">
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M6 2h12v6H6zm0 10h12v10H6zm-2-4a2 2 0 0 0-2 2v6h2v-2h16v2h2v-6a2 2 0 0 0-2-2H4zm14 3a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"
+          />
+        </svg>
+      </div>
+      <div class="prog-title" id="progTitle">Sending to Printer</div>
+      <div class="prog-sub" id="progSub">Preparing...</div>
+      <div class="prog-bw">
+        <div class="prog-bar" id="progBar" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <div class="toast-c" id="toastC"></div>
+    <div class="kb-hint" id="kbHint">
+      <span><span class="kb-key">Ctrl+O</span>Add</span>
+      <span><span class="kb-key">Ctrl+P</span>Print</span>
+      <span><span class="kb-key">Del</span>Remove</span>
+      <span><span class="kb-key">Ctrl+Z</span>Undo</span>
+      <span><span class="kb-key">Ctrl+↑↓</span>Reorder</span>
+      <span><span class="kb-key">Space</span>Preview</span>
+      <span><span class="kb-key">←→</span>Nav</span>
+      <span><span class="kb-key">?</span>hints</span>
+    </div>
+
+    <script>
+      // ══════════════════════
+      // STATE
+      // ══════════════════════
+      const S = {
+        files: [],
+        printer: "",
+        copies: 1,
+        orientation: "portrait",
+        color: "color",
+        paperSize: "a4",
+        printing: false,
+        rangeEnabled: false,
+        nup: 1,
+        duplex: false,
+        history: [],
+        histFiltered: [],
+        profiles: [],
+        prevFile: null,
+        prevPage: 1,
+        prevTotal: null,
+        deps: { ghostscript: null, sumatrapdf: null },
+        outPdf: null,
+        watches: [],
+        // DRAG STATE — pisah antara file-drag dan item-reorder
+        reorderSrc: null, // index item yang sedang direorder (null = bukan reorder)
+        // NEW FEATURES
+        soundEnabled: true,
+        undoStack: [], // max 10 undo entries
+        lifetimeStats: null,
+      };
+
+      // ══════════════════════
+      // INIT
+      // ══════════════════════
+      async function init() {
+        initDropZone();
+        initKeyboard();
+        await Promise.all([
+          loadSettings(),
+          loadPrinters(),
+          checkDeps(),
+          loadHist(),
+          loadProfs(),
+        ]);
+        await loadQueueFromDisk();
+        await loadWatches();
+        await loadLifetimeStats();
+        // Listen untuk file dari watch folder
+        if (window.electronAPI?.onWatchFileAdded) {
+          window.electronAPI.onWatchFileAdded(async (fileData) => {
+            await addFiles([fileData.path]);
+            showToast(`📂 Auto-added: ${fileData.name}`, "info");
+            // Auto-print kalau setting aktif
+            if (S.autoWatchPrint && !S.printing && S.printer) {
+              await startPrint();
+            }
+          });
+        }
+        // Tray events
+        window.electronAPI?.onTrayOpenFiles?.(() => openFileDlg());
+        window.electronAPI?.onTrayStartPrint?.(() => {
+          if (!document.getElementById("btnPrint").disabled) startPrint();
+        });
+      }
+
+      // ══════════════════════
+      // SETTINGS PERSISTENCE
+      // ══════════════════════
+      async function loadSettings() {
+        try {
+          const s = window.electronAPI
+            ? await window.electronAPI.getSettings()
+            : null;
+          if (!s) return;
+          // Terapkan copies
+          if (s.copies) {
+            S.copies = s.copies;
+            document.getElementById("copiesV").textContent = s.copies;
+          }
+          // Orientation & color (applied after DOM ready, set via functions)
+          if (s.orientation) setOri(s.orientation);
+          if (s.color) setColor(s.color);
+          // Range
+          if (s.rangeEnabled) {
+            S.rangeEnabled = true;
+            document.getElementById("rangeChk").checked = true;
+            document.getElementById("pageFrom").disabled = false;
+            document.getElementById("pageTo").disabled = false;
+          }
+          // Paper size
+          if (s.paperSize) setPaper(s.paperSize, true);
+          // N-up
+          if (s.nup) {
+            S.nup = s.nup;
+            const sel = document.getElementById("nupSel");
+            if (sel) sel.value = s.nup;
+          }
+          // Duplex
+          if (s.duplex) setDuplex(true, true);
+          // Sound
+          if (s.soundEnabled === false) {
+            S.soundEnabled = false;
+            const btn = document.getElementById("btnSound");
+            if (btn) btn.textContent = "🔇 Suara Off";
+          }
+          // Printer diterapkan setelah loadPrinters() selesai — simpan dulu
+          S._savedPrinter = s.printer || "";
+        } catch (e) {}
+      }
+
+      async function persistSettings() {
+        if (!window.electronAPI) return;
+        await window.electronAPI.saveSettings({
+          printer: S.printer,
+          copies: S.copies,
+          orientation: S.orientation,
+          color: S.color,
+          paperSize: S.paperSize,
+          rangeEnabled: S.rangeEnabled,
+          nup: S.nup,
+          duplex: S.duplex,
+          soundEnabled: S.soundEnabled,
+        });
+      }
+
+      // ══════════════════════
+      // KEYBOARD SHORTCUTS
+      // ══════════════════════
+      function initKeyboard() {
+        document.addEventListener("keydown", (e) => {
+          // Jangan trigger kalau sedang ngetik di input/textarea
+          const tag = document.activeElement?.tagName;
+          const inInput =
+            tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+
+          // Escape — clear selection, lalu tutup modal jika ada
+          if (e.key === "Escape") {
+            const hasSel = S.files.some((f) => f._selected);
+            if (hasSel) {
+              S.files.forEach((f) => (f._selected = false));
+              renderList();
+              return; // handled
+            }
+            return; // modal close handled elsewhere
+          }
+
+          if (inInput) return;
+
+          // Ctrl+O — buka file dialog
+          if ((e.ctrlKey || e.metaKey) && e.key === "o") {
+            e.preventDefault();
+            openFileDlg();
+            return;
+          }
+          // Ctrl+P — print
+          if ((e.ctrlKey || e.metaKey) && e.key === "p") {
+            e.preventDefault();
+            if (!document.getElementById("btnPrint").disabled) startPrint();
+            return;
+          }
+          // Ctrl+A — select all dengan visual feedback
+          if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+            e.preventDefault();
+            if (!S.files.length) return;
+            const allSel = S.files.every((f) => f._selected);
+            // Toggle: jika sudah semua selected, deselect semua
+            S.files.forEach((f) => (f._selected = !allSel));
+            renderList();
+            const count = S.files.filter((f) => f._selected).length;
+            if (count > 0)
+              showToast(`${count} file dipilih — Del untuk hapus`, "info");
+            return;
+          }
+          // Delete — hapus file yang sedang di-preview / semua selected
+          if (e.key === "Delete" || e.key === "Backspace") {
+            if (S.prevFile) {
+              removeFile(S.prevFile.id);
+              return;
+            }
+            const sel = S.files.filter((f) => f._selected);
+            if (sel.length) {
+              sel.forEach((f) => removeFile(f.id));
+              return;
+            }
+          }
+          // Ctrl+Shift+Z — clear semua
+          if ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey) {
+            e.preventDefault();
+            clearAll();
+            return;
+          }
+          // Ctrl+Z — undo (restore file yang baru dihapus)
+          if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+            e.preventDefault();
+            if (!S.undoStack.length) {
+              showToast("Tidak ada yang bisa di-undo", "info");
+              return;
+            }
+            const { files, indices } = S.undoStack.pop();
+            files.forEach((f, i) => {
+              const pos = Math.min(indices[i], S.files.length);
+              S.files.splice(pos, 0, { ...f, status: "queue", errMsg: null });
+            });
+            renderList();
+            updStats();
+            updPrintBtn();
+            scheduleQueueSave();
+            showToast(`${files.length} file dikembalikan`, "info");
+            return;
+          }
+          // Ctrl+↑ / Ctrl+↓ — pindah urutan file yang sedang dipreview
+          if ((e.ctrlKey || e.metaKey) && e.key === "ArrowUp") {
+            e.preventDefault();
+            if (!S.prevFile) return;
+            const idx = S.files.findIndex((f) => f.id === S.prevFile.id);
+            if (idx > 0) {
+              [S.files[idx - 1], S.files[idx]] = [
+                S.files[idx],
+                S.files[idx - 1],
+              ];
+              renderList();
+              scheduleQueueSave();
+            }
+            return;
+          }
+          if ((e.ctrlKey || e.metaKey) && e.key === "ArrowDown") {
+            e.preventDefault();
+            if (!S.prevFile) return;
+            const idx = S.files.findIndex((f) => f.id === S.prevFile.id);
+            if (idx >= 0 && idx < S.files.length - 1) {
+              [S.files[idx], S.files[idx + 1]] = [
+                S.files[idx + 1],
+                S.files[idx],
+              ];
+              renderList();
+              scheduleQueueSave();
+            }
+            return;
+          }
+          // Arrow keys — navigasi preview
+          if (e.key === "ArrowLeft" && !e.ctrlKey && !e.metaKey) {
+            if (S.prevFile) prevPg(-1);
+            return;
+          }
+          if (e.key === "ArrowRight" && !e.ctrlKey && !e.metaKey) {
+            if (S.prevFile) prevPg(1);
+            return;
+          }
+          // Space — toggle preview
+          if (e.key === " ") {
+            e.preventDefault();
+            const target = S.files.find((f) => f._selected) || S.files[0];
+            if (!target) return;
+            if (S.prevFile?.id === target.id) closePreview();
+            else openPreview(target.id);
+            return;
+          }
+          // ? — toggle keyboard hint
+          if (e.key === "?") {
+            const h = document.getElementById("kbHint");
+            h.classList.toggle("vis");
+            if (h.classList.contains("vis"))
+              setTimeout(() => h.classList.remove("vis"), 4000);
+            return;
+          }
+        });
+      }
+
+      // ══════════════════════════════════════════════════════
+      // DROP ZONE — terima file dari OS
+      // Kunci: gunakan dropZone element langsung, BUKAN document
+      // Pisah sepenuhnya dari item-reorder yang pakai dataTransfer text/plain
+      // ══════════════════════════════════════════════════════
+      function initDropZone() {
+        // Pasang listener di DOCUMENT level agar tangkap drop di mana saja di window
+        // Tapi hanya proses kalau bukan reorder (S.reorderSrc === null)
+        let enterCount = 0;
+        const zone = document.getElementById("dropZone");
+
+        // ── fileList: handle reorder drag-over gaps between items ──
+        const fl = document.getElementById("fileList");
+        fl.addEventListener("dragover", (e) => {
+          if (e.dataTransfer.types.includes("Files")) return; // let document handle
+          if (S.reorderSrc === null) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        });
+        fl.addEventListener("drop", (e) => {
+          if (e.dataTransfer.types.includes("Files")) return; // let document handle
+          if (S.reorderSrc === null) return;
+          e.preventDefault();
+          e.stopPropagation(); // prevent document from double-handling
+          // Drop landed on gap between items — append to end of list
+          const moved = S.files.splice(S.reorderSrc, 1)[0];
+          S.files.push(moved);
+          renderList();
+          updStats();
+          scheduleQueueSave();
+          oDragEnd();
+        });
+
+        document.addEventListener("dragenter", (e) => {
+          if (S.reorderSrc !== null) return; // sedang reorder, skip
+          if (!e.dataTransfer || !e.dataTransfer.types.includes("Files"))
+            return;
+          e.preventDefault();
+          enterCount++;
+          zone.classList.add("dz-active");
+        });
+
+        document.addEventListener("dragover", (e) => {
+          if (S.reorderSrc !== null) return;
+          if (!e.dataTransfer || !e.dataTransfer.types.includes("Files"))
+            return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+        });
+
+        document.addEventListener("dragleave", (e) => {
+          if (S.reorderSrc !== null) return;
+          if (!e.dataTransfer || !e.dataTransfer.types.includes("Files"))
+            return;
+          enterCount--;
+          if (enterCount <= 0) {
+            enterCount = 0;
+            zone.classList.remove("dz-active");
+          }
+        });
+
+        document.addEventListener("drop", async (e) => {
+          if (S.reorderSrc !== null) return; // biarkan oDrop handle
+          if (!e.dataTransfer || !e.dataTransfer.types.includes("Files"))
+            return;
+          e.preventDefault();
+          enterCount = 0;
+          zone.classList.remove("dz-active");
+          const files = Array.from(e.dataTransfer.files);
+          if (!files.length) return;
+          const paths = files
+            .map((f) =>
+              window.electronAPI?.getPathForFile
+                ? window.electronAPI.getPathForFile(f)
+                : f.path,
+            )
+            .filter(Boolean);
+          if (paths.length) {
+            await addFiles(paths);
+          } else {
+            showToast(
+              "Drag file dari Explorer/Finder, bukan dari browser",
+              "warning",
+            );
+          }
+        });
+      }
+
+      // ══════════════════════
+      // DEPS
+      // ══════════════════════
+      async function checkDeps() {
+        try {
+          S.deps = window.electronAPI
+            ? await window.electronAPI.checkDependencies()
+            : {
+                ghostscript: "demo",
+                sumatrapdf: null,
+                libreoffice: null,
+                msoffice: null,
+              };
+        } catch {}
+        updateDepBadge();
+      }
+      function updateDepBadge() {
+        const b = document.getElementById("depBadge");
+        const gs = S.deps.ghostscript,
+          su = S.deps.sumatrapdf,
+          lo = S.deps.libreoffice;
+        if (gs) {
+          b.className = "dep-badge dep-ok";
+          b.textContent = lo ? "● GS+LO OK" : "● GS OK";
+        } else if (su) {
+          b.className = "dep-badge dep-ok";
+          b.textContent = "● SUMATRA OK";
+        } else {
+          b.className = "dep-badge dep-warn";
+          b.textContent = "⚠ PDF ENGINE";
+        }
+      }
+      function openDepModal() {
+        const gs = S.deps.ghostscript,
+          su = S.deps.sumatrapdf,
+          lo = S.deps.libreoffice;
+        document.getElementById("depContent").innerHTML = `
+    <div class="dep-item">
+      <div class="dep-ic ${gs ? "ok" : "warn"}">${gs ? "✓" : "!"}</div>
+      <div class="dep-info">
+        <div class="dep-name">Ghostscript</div>
+        <div class="dep-desc">Engine PDF utama — print, preview, export. Juga dipakai untuk render preview Word/Excel.</div>
+        ${gs ? `<span class="dep-ok-tag">Terdeteksi ✓</span>` : `<a class="dep-link" href="https://www.ghostscript.com/releases/gsdnld.html">↗ Download Ghostscript (gratis)</a>`}
+      </div>
+    </div>
+    <div class="dep-item">
+      <div class="dep-ic ${su ? "ok" : "warn"}">${su ? "✓" : "–"}</div>
+      <div class="dep-info">
+        <div class="dep-name">SumatraPDF</div>
+        <div class="dep-desc">Fallback untuk print PDF jika Ghostscript tidak ada.</div>
+        ${su ? `<span class="dep-ok-tag">Terdeteksi ✓</span>` : `<a class="dep-link" href="https://www.sumatrapdfreader.org">↗ Download SumatraPDF (gratis)</a>`}
+      </div>
+    </div>
+    <div class="dep-item">
+      <div class="dep-ic ${lo ? "ok" : "warn"}">${lo ? "✓" : "ℹ"}</div>
+      <div class="dep-info">
+        <div class="dep-name">LibreOffice ${lo ? "(Terdeteksi ✓)" : "(Tidak ditemukan)"}</div>
+        <div class="dep-desc">Untuk preview & print Word/Excel/PPT <b>tanpa Microsoft Office</b>.<br>
+        Print/preview berjalan 100% background — tidak ada jendela terbuka.<br>
+        Jika MS Office sudah terinstall, LibreOffice tidak wajib.</div>
+        ${lo ? `<span class="dep-ok-tag">Siap digunakan ✓</span>` : `<a class="dep-link" href="https://www.libreoffice.org/download/">↗ Download LibreOffice (gratis, rekomendasi)</a>`}
+      </div>
+    </div>`;
+        openModal("depModal");
+      }
+
+      // ══════════════════════
+      // PRINTERS
+      // ══════════════════════
+      async function loadPrinters() {
+        const sel = document.getElementById("printerSel");
+        try {
+          const list = window.electronAPI
+            ? await window.electronAPI.getPrinters()
+            : [
+                { name: "HP LaserJet", isDefault: true },
+                { name: "Canon PIXMA", isDefault: false },
+                { name: "Microsoft Print to PDF", isDefault: false },
+              ];
+          sel.innerHTML = "";
+          list.forEach((p) => {
+            const o = document.createElement("option");
+            o.value = p.name;
+            o.textContent = p.isDefault ? `${p.name} (Default)` : p.name;
+            if (p.isDefault) o.selected = true;
+            sel.appendChild(o);
+          });
+          // Restore saved printer jika ada
+          if (S._savedPrinter) {
+            const match = Array.from(sel.options).find(
+              (o) => o.value === S._savedPrinter,
+            );
+            if (match) {
+              sel.value = S._savedPrinter;
+            }
+          }
+          S.printer = sel.value;
+          updPrinter(!!sel.value);
+        } catch {
+          sel.innerHTML = "<option>No printers found</option>";
+          updPrinter(false);
+        }
+        sel.onchange = () => {
+          S.printer = sel.value;
+          updPrinter(!!sel.value);
+          persistSettings();
+        };
+      }
+      function updPrinter(ok) {
+        document.getElementById("pDot").className =
+          "p-dot" + (ok ? "" : " off");
+        document.getElementById("pTxt").textContent = ok
+          ? "Ready to print"
+          : "No printer selected";
+      }
+
+      // ══════════════════════
+      // FILES
+      // ══════════════════════
+      async function openFileDlg() {
+        try {
+          const paths = window.electronAPI
+            ? await window.electronAPI.openFileDialog()
+            : ["/demo/doc.pdf", "/demo/report.docx"];
+          if (paths.length) await addFiles(paths);
+        } catch (e) {
+          showToast("Gagal buka dialog: " + e.message, "error");
+        }
+      }
+
+      async function addFiles(paths) {
+        const dupes = paths.filter((p) => S.files.find((f) => f.path === p));
+        const newPaths = paths.filter(
+          (p) => !S.files.find((f) => f.path === p),
+        );
+        if (dupes.length) {
+          dupes.forEach((p) => {
+            const f = S.files.find((x) => x.path === p);
+            if (f) {
+              const el = document.getElementById(`fi-${f.id}`);
+              if (el) {
+                el.classList.remove("dup-flash");
+                void el.offsetWidth; // reflow to restart animation
+                el.classList.add("dup-flash");
+                setTimeout(() => el.classList.remove("dup-flash"), 900);
+              }
+            }
+          });
+          showToast(
+            `${dupes.length} file sudah ada di queue`,
+            dupes.length === paths.length ? "warning" : "info",
+          );
+        }
+        if (!newPaths.length) return;
+        for (const fp of newPaths) {
+          let info;
+          if (window.electronAPI) {
+            info = await window.electronAPI.getFileInfo(fp);
+          } else {
+            const name = fp.split(/[\\/]/).pop();
+            info = {
+              name,
+              path: fp,
+              size: Math.floor(Math.random() * 3e6),
+              ext: name.split(".").pop().toLowerCase(),
+            };
+          }
+          if (info) {
+            const f = {
+              ...info,
+              status: "queue",
+              id: Date.now() + Math.random(),
+              totalPages: null,
+              _new: true,
+              fileCopies: null,
+              fileOrientation: null,
+              filePageFrom: null,
+              filePageTo: null,
+            };
+            S.files.push(f);
+            if (window.electronAPI) {
+              window.electronAPI
+                .getPageCount(fp)
+                .then((n) => {
+                  if (n) {
+                    f.totalPages = n;
+                    // Don't re-render if a drag is in progress — it would
+                    // remove the dragged element from the DOM and cancel the drag
+                    if (S.reorderSrc === null) renderList();
+                  }
+                })
+                .catch(() => {});
+            }
+          }
+        }
+        renderList();
+        updStats();
+        updPrintBtn();
+        scheduleQueueSave();
+        showToast(`${newPaths.length} file ditambahkan`, "info");
+      }
+
+      function removeFile(id) {
+        const idx = S.files.findIndex((f) => f.id === id);
+        if (idx >= 0) {
+          S.undoStack.push({ files: [S.files[idx]], indices: [idx] });
+          if (S.undoStack.length > 10) S.undoStack.shift();
+        }
+        S.files = S.files.filter((f) => f.id !== id);
+        if (S.prevFile?.id === id) closePreview();
+        renderList();
+        updStats();
+        updPrintBtn();
+        scheduleQueueSave();
+      }
+      function clearAll() {
+        if (S.files.length) {
+          S.undoStack.push({
+            files: [...S.files],
+            indices: S.files.map((_, i) => i),
+          });
+          if (S.undoStack.length > 10) S.undoStack.shift();
+        }
+        S.files = [];
+        closePreview();
+        renderList();
+        updStats();
+        updPrintBtn();
+        if (window.electronAPI) window.electronAPI.clearQueue();
+      }
+
+      // ══════════════════════
+      // SOUND NOTIFICATION
+      // ══════════════════════
+      function playSound(type) {
+        if (!S.soundEnabled) return;
+        try {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = "sine";
+          if (type === "success") {
+            osc.frequency.setValueAtTime(523, ctx.currentTime);
+            osc.frequency.setValueAtTime(659, ctx.currentTime + 0.18);
+            gain.gain.setValueAtTime(0.22, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(
+              0.001,
+              ctx.currentTime + 0.65,
+            );
+            osc.start();
+            osc.stop(ctx.currentTime + 0.65);
+          } else {
+            osc.frequency.setValueAtTime(380, ctx.currentTime);
+            osc.frequency.setValueAtTime(250, ctx.currentTime + 0.22);
+            gain.gain.setValueAtTime(0.22, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(
+              0.001,
+              ctx.currentTime + 0.55,
+            );
+            osc.start();
+            osc.stop(ctx.currentTime + 0.55);
+          }
+          osc.onended = () => ctx.close();
+        } catch {}
+      }
+      function toggleSound() {
+        S.soundEnabled = !S.soundEnabled;
+        const btn = document.getElementById("btnSound");
+        btn.textContent = S.soundEnabled ? "🔔 Suara On" : "🔇 Suara Off";
+        persistSettings();
+        if (S.soundEnabled) playSound("success");
+      }
+
+      // ══════════════════════
+      // LIFETIME STATS
+      // ══════════════════════
+      async function loadLifetimeStats() {
+        try {
+          S.lifetimeStats = window.electronAPI
+            ? await window.electronAPI.getLifetimeStats()
+            : null;
+        } catch {
+          S.lifetimeStats = null;
+        }
+        const elAll = document.getElementById("stAllTime");
+        const elRate = document.getElementById("stRate");
+        if (S.lifetimeStats && elAll && elRate) {
+          elAll.textContent = S.lifetimeStats.total;
+          const rate =
+            S.lifetimeStats.total > 0
+              ? Math.round(
+                  (S.lifetimeStats.success / S.lifetimeStats.total) * 100,
+                )
+              : 0;
+          elRate.textContent = `${rate}%`;
+        }
+      }
+
+      // ══════════════════════
+      // RECENT FILES
+      // ══════════════════════
+      function renderRecent() {
+        const list = document.getElementById("recList");
+        if (!list) return;
+        // Deduplicate history by path, success only, top 20
+        const seen = new Set();
+        const recent = S.history
+          .filter((h) => h.success && h.path && h.ext !== "pdf")
+          .filter((h) => {
+            if (seen.has(h.path)) return false;
+            seen.add(h.path);
+            return true;
+          })
+          .slice(0, 20);
+        if (!recent.length) {
+          list.innerHTML = `<div class="prof-empty">Belum ada riwayat</div>`;
+          return;
+        }
+        list.innerHTML = recent
+          .map((h) => {
+            const badge = BADGE[h.ext] || "bo";
+            const name =
+              h.name.length > 22 ? h.name.slice(0, 20) + "…" : h.name;
+            return `<div class="rec-item">
+              <span class="fbadge ${badge}">${h.ext.toUpperCase()}</span>
+              <span class="rec-name" title="${h.name}">${name}</span>
+              <span class="rec-add" onclick="addFiles(['${h.path.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'])" title="Tambah ke queue">+</span>
+            </div>`;
+          })
+          .join("");
+      }
+
+      // ══════════════════════
+      // RENDER
+      // ══════════════════════
+      const BADGE = {
+        pdf: "bp",
+        doc: "bd",
+        docx: "bdc",
+        xls: "bx",
+        xlsx: "bxc",
+        ppt: "bpt",
+        pptx: "bptx",
+        odt: "blo",
+        ods: "blo",
+        rtf: "brtf",
+        html: "bhtm",
+        htm: "bhtm",
+        txt: "bt",
+        png: "bi",
+        jpg: "bi",
+        jpeg: "bi",
+        bmp: "bi",
+        gif: "bi",
+      };
+      const STATUS = {
+        queue: "st-q",
+        printing: "st-pr",
+        done: "st-ok",
+        error: "st-er",
+      };
+
+      function renderList() {
+        const fl = document.getElementById("fileList");
+        const em = document.getElementById("dzEmpty");
+        if (!S.files.length) {
+          fl.innerHTML = "";
+          em.classList.remove("hid");
+          return;
+        }
+        em.classList.add("hid");
+        fl.innerHTML = S.files
+          .map((f, i) => {
+            const hasOverride =
+              f.fileCopies || f.fileOrientation || f.filePageFrom;
+            const settOpen = f._settOpen || false;
+            const fc = f.fileCopies || S.copies;
+            const fo = f.fileOrientation || S.orientation;
+            const fpf = f.filePageFrom || "";
+            const fpt = f.filePageTo || "";
+            return `
+    <div class="fi ${f.status !== "queue" ? f.status : ""} ${S.prevFile?.id === f.id ? "sel" : ""} ${f._selected ? "multi-sel" : ""} ${f._new ? "fi-new" : ""} ${settOpen ? "fi-full" : ""}"
+         id="fi-${f.id}"
+         draggable="true"
+         ondragstart="oDragStart(event,${i})"
+         ondragover="oDragOver(event,${i})"
+         ondragleave="oDragLeave(event)"
+         ondrop="oDrop(event,${i})"
+         ondragend="oDragEnd()">
+      <div style="display:flex;align-items:center;gap:7px;width:100%">
+        <span class="dh">⠿</span>
+        <span class="ford">${i + 1}</span>
+        <div class="fbadge ${BADGE[f.ext] || "bo"}">${f.ext}</div>
+        <div class="finfo">
+          <div class="fn" title="${f.path || f.name}">${f.name}</div>
+          <div class="fm">
+            <span class="fsz">${fmtSz(f.size)}</span>
+            ${f.totalPages ? `<span class="fpg">📄 ${f.totalPages}p</span>` : ""}
+            ${hasOverride ? `<span class="frng" title="Per-file settings aktif">⚙ ×${fc} ${fo === "landscape" ? "Land" : "Port"}${fpf ? ` p.${fpf}–${fpt}` : ""}</span>` : ""}
+          </div>
+          ${f.errMsg && f.status === "error" ? `<div class="fi-err-msg" title="${f.errMsg.replace(/"/g, "&quot;")}">${f.errMsg.substring(0, 90)}</div>` : ""}
+        </div>
+        <span class="fst ${STATUS[f.status] || "st-q"}" title="${f.errMsg || ""}">${f.status.toUpperCase()}</span>
+        <div class="fa">
+          ${f.status === "error" ? `<button class="fab retry" title="Retry print" onclick="event.stopPropagation();retryFile(${f.id})">↺</button>` : ""}
+          <button class="fab eye" title="Preview (atau ←→)" onclick="event.stopPropagation();openPreview(${f.id})">👁</button>
+          <button class="fab ${settOpen ? "on-sett" : ""}" title="Per-file settings" style="${settOpen ? "border-color:var(--ac);color:var(--ac)" : ""}" onclick="event.stopPropagation();toggleFileSett(${f.id})">⚙</button>
+          <button class="fab" title="Remove (Del)" onclick="event.stopPropagation();removeFile(${f.id})">✕</button>
+        </div>
+      </div>
+      <div class="fi-settings ${settOpen ? "open" : ""}">
+        <div class="fi-settings-row">
+          <span class="fi-settings-label">COPIES</span>
+          <button class="fi-spin" onclick="event.stopPropagation();chFileCopies(${f.id},-1)">−</button>
+          <span class="fi-settings-val" id="fc-${f.id}">${fc}</span>
+          <button class="fi-spin" onclick="event.stopPropagation();chFileCopies(${f.id},1)">+</button>
+          <span style="width:12px"></span>
+          <span class="fi-settings-label">ORIENT</span>
+          <div class="fi-tg">
+            <button class="fi-tg-btn ${fo === "portrait" ? "on" : ""}" onclick="event.stopPropagation();setFileOri(${f.id},'portrait')">PORT</button>
+            <button class="fi-tg-btn ${fo === "landscape" ? "on" : ""}" onclick="event.stopPropagation();setFileOri(${f.id},'landscape')">LAND</button>
+          </div>
+        </div>
+        <div class="fi-settings-row">
+          <span class="fi-settings-label">PAGES</span>
+          <input type="number" class="fi-range-in" id="fpf-${f.id}" placeholder="from" min="1" value="${fpf}"
+            onchange="event.stopPropagation();setFileRange(${f.id})" onclick="event.stopPropagation()">
+          <span class="r-sep">—</span>
+          <input type="number" class="fi-range-in" id="fpt-${f.id}" placeholder="to" min="1" value="${fpt}"
+            onchange="event.stopPropagation();setFileRange(${f.id})" onclick="event.stopPropagation()">
+          <button class="fi-reset" onclick="event.stopPropagation();resetFileSett(${f.id})">↺ reset</button>
+        </div>
+      </div>
+    </div>`;
+          })
+          .join("");
+        S.files.forEach((f) => (f._new = false));
+      }
+
+      function fmtSz(b) {
+        if (!b) return "—";
+        if (b < 1024) return b + "B";
+        if (b < 1048576) return (b / 1024).toFixed(1) + "KB";
+        return (b / 1048576).toFixed(1) + "MB";
+      }
+
+      function updStats() {
+        document.getElementById("stTotal").textContent = S.files.length;
+        document.getElementById("stDone").textContent = S.files.filter(
+          (f) => f.status === "done",
+        ).length;
+        document.getElementById("stErr").textContent = S.files.filter(
+          (f) => f.status === "error",
+        ).length;
+        const qb = document.getElementById("qBadge");
+        qb.textContent = S.files.length;
+        qb.style.display = S.files.length > 0 ? "inline-flex" : "none";
+        document.getElementById("tInfo").textContent =
+          S.files.length > 0
+            ? `${S.files.length} file — ⠿ drag untuk reorder`
+            : "DROP FILES TO QUEUE";
+      }
+      function updPrintBtn() {
+        const ok = S.files.length > 0 && !S.printing;
+        document.getElementById("btnPrint").disabled = !ok || !S.printer;
+        document.getElementById("btnToPdf").disabled = !ok;
+      }
+
+      // ══════════════════════════════════════════════════
+      // ITEM REORDER — drag-and-drop dalam list
+      // Kunci: cek dataTransfer.types === ['text/plain'] bukan 'Files'
+      // ══════════════════════════════════════════════════
+      function oDragStart(e, idx) {
+        S.reorderSrc = idx;
+        e.dataTransfer.effectAllowed = "move";
+        // Pakai text/plain agar browser tahu ini internal drag, BUKAN file
+        e.dataTransfer.setData("text/plain", String(idx));
+        setTimeout(() => {
+          const el = document.getElementById(`fi-${S.files[idx]?.id}`);
+          if (el) el.classList.add("drag-src");
+        }, 0);
+      }
+
+      function oDragOver(e, idx) {
+        // Kalau ada Files → ini drag file dari OS, skip reorder
+        if (e.dataTransfer.types.includes("Files")) return;
+        if (S.reorderSrc === null || S.reorderSrc === idx) return;
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = "move";
+        document
+          .querySelectorAll(".fi")
+          .forEach((el) => el.classList.remove("drag-over"));
+        document
+          .getElementById(`fi-${S.files[idx]?.id}`)
+          ?.classList.add("drag-over");
+      }
+
+      function oDragLeave(e) {
+        e.currentTarget.classList.remove("drag-over");
+      }
+
+      function oDrop(e, toIdx) {
+        // Kalau ini file dari OS → jangan handle di sini, biarkan document drop handler
+        if (e.dataTransfer.types.includes("Files")) return;
+        if (S.reorderSrc === null) return;
+        e.preventDefault();
+        e.stopPropagation(); // prevent fileList/document from double-handling
+        if (S.reorderSrc !== toIdx) {
+          const moved = S.files.splice(S.reorderSrc, 1)[0];
+          S.files.splice(toIdx, 0, moved);
+          updStats();
+          scheduleQueueSave();
+        }
+        oDragEnd(); // oDragEnd calls renderList()
+      }
+
+      function oDragEnd() {
+        S.reorderSrc = null;
+        document
+          .querySelectorAll(".fi")
+          .forEach((el) => el.classList.remove("drag-src", "drag-over"));
+        // Re-render to pick up any page counts that were deferred during drag
+        renderList();
+      }
+
+      // ══════════════════════
+      // PREVIEW
+      // ══════════════════════
+      async function openPreview(id) {
+        const f = S.files.find((f) => f.id === id);
+        if (!f) return;
+        S.prevFile = f;
+        S.prevPage = 1;
+        S.prevTotal = f.totalPages;
+        document.getElementById("prevPanel").classList.add("open");
+        renderList();
+        await loadPrevPage();
+        if (f.totalPages)
+          document.getElementById("rangeInfo").textContent =
+            `File ini: ${f.totalPages} halaman`;
+      }
+      function closePreview() {
+        S.prevFile = null;
+        document.getElementById("prevPanel").classList.remove("open");
+        renderList();
+      }
+
+      async function loadPrevPage() {
+        const body = document.getElementById("prevBody");
+        if (!S.prevFile) return;
+        const f = S.prevFile;
+        const showNav = S.prevTotal > 1;
+
+        body.innerHTML = `
+    <div class="prev-fn" title="${f.path || f.name}">${f.name}</div>
+    <div class="prev-img-wrap" id="prevWrap"><div class="prev-msg">Loading...</div></div>
+    ${
+      showNav
+        ? `<div class="prev-nav">
+      <button class="prev-nav-btn" onclick="prevPg(-1)" ${S.prevPage <= 1 ? "disabled" : ""}>◀</button>
+      <span class="prev-pi">${S.prevPage} / ${S.prevTotal || "?"}</span>
+      <button class="prev-nav-btn" onclick="prevPg(1)" ${S.prevTotal && S.prevPage >= S.prevTotal ? "disabled" : ""}>▶</button>
+    </div>`
+        : ""
+    }`;
+
+        const wrap = document.getElementById("prevWrap");
+        const isOffice = ["doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(
+          f.ext,
+        );
+        const isPdf = f.ext === "pdf";
+        const isImg = ["png", "jpg", "jpeg", "bmp", "gif"].includes(f.ext);
+
+        if (!isPdf && !isImg && isOffice) {
+          wrap.innerHTML += ""; // akan diisi hasil preview
+          // Tambahkan note dulu
+          const noteEl = document.createElement("div");
+          noteEl.className = "prev-note";
+          noteEl.innerHTML = `Preview ${f.ext.toUpperCase()} memerlukan<br>Microsoft Office + Ghostscript`;
+          body.appendChild(noteEl);
+        }
+
+        try {
+          let res = null;
+          if (window.electronAPI) {
+            res = await window.electronAPI.getPreview({
+              filePath: f.path,
+              page: S.prevPage,
+            });
+          } else {
+            res = null;
+          }
+
+          if (res?.type === "image") {
+            wrap.innerHTML = `<img class="prev-img" src="${res.data}" alt="Page ${S.prevPage}">`;
+          } else if (res?.type === "html") {
+            const blob = new Blob([res.content], { type: "text/html" });
+            const url = URL.createObjectURL(blob);
+            wrap.innerHTML = `<iframe class="prev-iframe" src="${url}"></iframe>`;
+            if (res.totalPages && !S.prevTotal) {
+              S.prevTotal = res.totalPages;
+              S.prevFile.totalPages = res.totalPages;
+              await loadPrevPage();
+              return;
+            }
+          } else if (res?.type === "error") {
+            wrap.innerHTML = `<div class="prev-msg">${res.msg}</div>`;
+          } else {
+            // Demo mode atau no result
+            wrap.innerHTML = `<div class="prev-msg">Preview tersedia saat<br>aplikasi berjalan di Windows<br><br><span style="font-size:10px;opacity:.5">File tetap bisa diprint</span></div>`;
+          }
+        } catch (e) {
+          wrap.innerHTML = `<div class="prev-msg">Error: ${e.message.substring(0, 80)}</div>`;
+        }
+      }
+
+      function prevPg(dir) {
+        const newPg = S.prevPage + dir;
+        if (newPg < 1) return;
+        if (S.prevTotal && newPg > S.prevTotal) return;
+        S.prevPage = newPg;
+        loadPrevPage();
+      }
+
+      // ══════════════════════
+      // PAGE RANGE
+      // ══════════════════════
+      function toggleRange() {
+        S.rangeEnabled = document.getElementById("rangeChk").checked;
+        document.getElementById("pageFrom").disabled = !S.rangeEnabled;
+        document.getElementById("pageTo").disabled = !S.rangeEnabled;
+        persistSettings();
+      }
+
+      // ══════════════════════
+      // SETTINGS
+      // ══════════════════════
+      function chCopies(d) {
+        S.copies = Math.max(1, Math.min(99, S.copies + d));
+        document.getElementById("copiesV").textContent = S.copies;
+        persistSettings();
+      }
+      function setOri(v) {
+        S.orientation = v;
+        document
+          .getElementById("oPort")
+          .classList.toggle("on", v === "portrait");
+        document
+          .getElementById("oLand")
+          .classList.toggle("on", v === "landscape");
+        persistSettings();
+      }
+      function setColor(v) {
+        S.color = v;
+        document.getElementById("cColor").classList.toggle("on", v === "color");
+        document.getElementById("cBW").classList.toggle("on", v === "bw");
+        persistSettings();
+      }
+      function setPaper(v, silent) {
+        S.paperSize = v;
+        const sel = document.getElementById("paperSel");
+        if (sel) sel.value = v;
+        if (!silent) persistSettings();
+      }
+
+      // ══════════════════════
+      // SORTING
+      // ══════════════════════
+      // ══════════════════════
+      // PER-FILE SETTINGS
+      // ══════════════════════
+      function toggleFileSett(id) {
+        const f = S.files.find((f) => f.id === id);
+        if (!f) return;
+        f._settOpen = !f._settOpen;
+        renderList();
+      }
+      function chFileCopies(id, d) {
+        const f = S.files.find((f) => f.id === id);
+        if (!f) return;
+        f.fileCopies = Math.max(
+          1,
+          Math.min(99, (f.fileCopies || S.copies) + d),
+        );
+        const el = document.getElementById("fc-" + id);
+        if (el) el.textContent = f.fileCopies;
+        renderList();
+      }
+      function setFileOri(id, v) {
+        const f = S.files.find((f) => f.id === id);
+        if (!f) return;
+        f.fileOrientation = v;
+        renderList();
+      }
+      function setFileRange(id) {
+        const f = S.files.find((f) => f.id === id);
+        if (!f) return;
+        const pf = document.getElementById("fpf-" + id)?.value;
+        const pt = document.getElementById("fpt-" + id)?.value;
+        f.filePageFrom = pf ? parseInt(pf) : null;
+        f.filePageTo = pt ? parseInt(pt) : null;
+      }
+      function resetFileSett(id) {
+        const f = S.files.find((f) => f.id === id);
+        if (!f) return;
+        f.fileCopies = null;
+        f.fileOrientation = null;
+        f.filePageFrom = null;
+        f.filePageTo = null;
+        renderList();
+      }
+
+      // ══════════════════════
+      // DUPLEX + N-UP
+      // ══════════════════════
+      function setDuplex(val, silent) {
+        S.duplex = val;
+        document.getElementById("duplexOff").classList.toggle("on", !val);
+        document.getElementById("duplexOn").classList.toggle("on", val);
+        if (!silent) persistSettings();
+      }
+
+      // ══════════════════════
+      // RETRY
+      // ══════════════════════
+      async function retryFile(id) {
+        const f = S.files.find((f) => f.id === id);
+        if (!f || S.printing) return;
+        f.status = "queue";
+        f.errMsg = null;
+        renderList();
+        updStats();
+        updPrintBtn();
+        showToast(`↺ ${f.name} dikembalikan ke queue`, "info");
+      }
+
+      // ══════════════════════
+      // ABOUT
+      // ══════════════════════
+      function openAbout() {
+        const gs = S.deps.ghostscript;
+        const su = S.deps.sumatrapdf;
+        const lo = S.deps.libreoffice;
+        document.getElementById("aboutDepGrid").innerHTML = `
+    <div class="about-dep">
+      <div class="about-dep-name">Ghostscript</div>
+      <div class="about-dep-status" style="color:${gs ? "var(--ok)" : "var(--er)"}">${gs ? "✓ Terdeteksi" : "✗ Tidak ada"}</div>
+    </div>
+    <div class="about-dep">
+      <div class="about-dep-name">LibreOffice</div>
+      <div class="about-dep-status" style="color:${lo ? "var(--ok)" : "var(--wa)"}">${lo ? "✓ Terdeteksi" : "⚠ Tidak ada"}</div>
+    </div>
+    <div class="about-dep">
+      <div class="about-dep-name">SumatraPDF</div>
+      <div class="about-dep-status" style="color:${su ? "var(--ok)" : "var(--tx3)"}">${su ? "✓ Terdeteksi" : "– Tidak ada"}</div>
+    </div>
+    <div class="about-dep">
+      <div class="about-dep-name">MS Office</div>
+      <div class="about-dep-status" style="color:var(--tx3)">Auto-detect saat print</div>
+    </div>`;
+        openModal("aboutModal");
+      }
+
+      // ══════════════════════
+      // QUEUE PERSIST
+      // ══════════════════════
+      async function loadQueueFromDisk() {
+        if (!window.electronAPI) return;
+        try {
+          const saved = await window.electronAPI.loadQueue();
+          if (!saved || !saved.length) return;
+          // Buat file objects dari data tersimpan
+          for (const item of saved) {
+            if (S.files.find((f) => f.path === item.path)) continue;
+            const f = {
+              ...item,
+              status: "queue",
+              id: Date.now() + Math.random(),
+              _new: true,
+            };
+            S.files.push(f);
+          }
+          if (saved.length) {
+            renderList();
+            updStats();
+            updPrintBtn();
+            showToast(
+              `📂 ${saved.length} file dipulihkan dari sesi sebelumnya`,
+              "info",
+            );
+          }
+        } catch (e) {}
+      }
+
+      async function saveQueueToDisk() {
+        if (!window.electronAPI) return;
+        await window.electronAPI.saveQueue(
+          S.files.filter((f) => f.status !== "done"),
+        );
+      }
+
+      // Auto-save queue saat ada perubahan — debounced
+      let _queueSaveTimer = null;
+      function scheduleQueueSave() {
+        if (_queueSaveTimer) clearTimeout(_queueSaveTimer);
+        _queueSaveTimer = setTimeout(saveQueueToDisk, 800);
+      }
+
+      // ══════════════════════
+      // WATCH FOLDER
+      // ══════════════════════
+      async function loadWatches() {
+        if (!window.electronAPI) return;
+        try {
+          S.watches = (await window.electronAPI.getWatches()) || [];
+          renderWatches();
+        } catch {}
+      }
+
+      async function addWatchFolder() {
+        if (!window.electronAPI) return;
+        const folder = await window.electronAPI.openFolderDialog();
+        if (!folder) return;
+        const result = await window.electronAPI.startWatch(folder);
+        if (result.ok) {
+          if (!S.watches.includes(folder)) S.watches.push(folder);
+          renderWatches();
+          showToast(`👁 Watching: ${folder.split(/[\/]/).pop()}`, "success");
+        } else {
+          showToast(`Watch gagal: ${result.msg}`, "error");
+        }
+      }
+
+      function stopWatchByIdx(idx) {
+        const folder = S.watches[idx];
+        if (folder) stopWatch(folder);
+      }
+
+      async function stopWatch(folder) {
+        if (!window.electronAPI) return;
+        await window.electronAPI.stopWatch(folder);
+        S.watches = S.watches.filter((w) => w !== folder);
+        renderWatches();
+        showToast("Watch folder dihentikan", "info");
+      }
+
+      function renderWatches() {
+        const list = document.getElementById("watchList");
+        if (!list) return;
+        if (!S.watches.length) {
+          list.innerHTML =
+            '<div style="font-family:var(--mono);font-size:8px;color:var(--tx3);padding:4px 0">Tidak ada folder yang di-watch</div>';
+          return;
+        }
+        list.innerHTML = S.watches
+          .map((w) => {
+            const name = w.split(/[\/]/).pop();
+            const idx = S.watches.indexOf(w);
+            return `<div class="watch-item">
+      <div class="watch-dot"></div>
+      <span class="watch-name" title="${w}">${name}</span>
+      <span class="watch-mode-badge">LIVE</span>
+      <button class="watch-stop" onclick="stopWatchByIdx(${idx})" title="Stop watching">✕</button>
+    </div>`;
+          })
+          .join("");
+      }
+
+      function sortName() {
+        S.files.sort((a, b) => a.name.localeCompare(b.name));
+        renderList();
+        updStats();
+      }
+      function sortType() {
+        S.files.sort(
+          (a, b) => a.ext.localeCompare(b.ext) || a.name.localeCompare(b.name),
+        );
+        renderList();
+        updStats();
+      }
+      function revOrder() {
+        S.files.reverse();
+        renderList();
+        updStats();
+        showToast("Urutan dibalik", "info");
+      }
+
+      // ══════════════════════
+      // TABS
+      // ══════════════════════
+      function lTab(t) {
+        ["set", "prof", "rec"].forEach((n) => {
+          document.getElementById(`lt-${n}`).classList.toggle("on", n === t);
+          document.getElementById(`lc-${n}`).style.display =
+            n === t ? "flex" : "none";
+        });
+        if (t === "rec") renderRecent();
+      }
+      function rTab(t) {
+        ["queue", "hist"].forEach((n) => {
+          document.getElementById(`rt-${n}`).classList.toggle("on", n === t);
+          document.getElementById(`rc-${n}`).classList.toggle("on", n === t);
+        });
+      }
+
+      // ══════════════════════
+      // PROFILES
+      // ══════════════════════
+      async function loadProfs() {
+        try {
+          S.profiles = window.electronAPI
+            ? await window.electronAPI.getProfiles()
+            : [];
+        } catch {
+          S.profiles = [];
+        }
+        renderProfs();
+      }
+      function renderProfs() {
+        const list = document.getElementById("profList");
+        const pb = document.getElementById("profBadge");
+        pb.textContent = S.profiles.length;
+        pb.style.display = S.profiles.length > 0 ? "inline-flex" : "none";
+        if (!S.profiles.length) {
+          list.innerHTML = '<div class="prof-empty">Belum ada profile</div>';
+          return;
+        }
+        list.innerHTML = S.profiles
+          .map(
+            (p) => `
+    <div class="prof-item" onclick="applyProf('${p.id}')">
+      <div style="flex:1;min-width:0">
+        <div class="prof-name">${p.name}</div>
+        <div class="prof-meta">${(p.printer || "").substring(0, 22)} · ×${p.copies} · ${p.orientation === "landscape" ? "Land" : "Port"} · ${p.color === "bw" ? "B&W" : "Color"}</div>
+      </div>
+      <button class="prof-del" onclick="event.stopPropagation();delProf('${p.id}')">✕</button>
+    </div>`,
+          )
+          .join("");
+      }
+      function openSaveProfModal() {
+        document.getElementById("profModalSub").textContent =
+          `Printer: ${S.printer || "—"} · ×${S.copies} · ${S.orientation} · ${S.color}`;
+        document.getElementById("profNameIn").value = "";
+        openModal("profModal");
+        setTimeout(() => document.getElementById("profNameIn").focus(), 120);
+      }
+      async function saveProf() {
+        const name = document.getElementById("profNameIn").value.trim();
+        if (!name) {
+          showToast("Masukkan nama profile", "warning");
+          return;
+        }
+        const p = {
+          id: Date.now().toString(),
+          name,
+          printer: S.printer,
+          copies: S.copies,
+          orientation: S.orientation,
+          color: S.color,
+        };
+        S.profiles = window.electronAPI
+          ? await window.electronAPI.saveProfile(p)
+          : [...S.profiles, p];
+        renderProfs();
+        closeModal("profModal");
+        showToast(`Profile "${name}" tersimpan`, "success");
+      }
+      function applyProf(id) {
+        const p = S.profiles.find((p) => p.id === id);
+        if (!p) return;
+        if (p.printer) {
+          const sel = document.getElementById("printerSel");
+          const opt = Array.from(sel.options).find(
+            (o) => o.value === p.printer,
+          );
+          if (opt) {
+            sel.value = p.printer;
+            S.printer = p.printer;
+            updPrinter(true);
+          }
+        }
+        S.copies = p.copies;
+        document.getElementById("copiesV").textContent = p.copies;
+        setOri(p.orientation);
+        setColor(p.color);
+        showToast(`Profile "${p.name}" diterapkan`, "success");
+      }
+      async function delProf(id) {
+        S.profiles = window.electronAPI
+          ? await window.electronAPI.deleteProfile(id)
+          : S.profiles.filter((p) => p.id !== id);
+        renderProfs();
+        showToast("Profile dihapus", "info");
+      }
+
+      // ══════════════════════
+      // PRINT
+      // ══════════════════════
+      async function startPrint() {
+        if (S.printing || !S.files.length) return;
+        S.printing = true;
+        updPrintBtn();
+        const pf = S.rangeEnabled
+          ? parseInt(document.getElementById("pageFrom").value) || null
+          : null;
+        const pt = S.rangeEnabled
+          ? parseInt(document.getElementById("pageTo").value) || null
+          : null;
+        document.getElementById("progTitle").textContent = "Sending to Printer";
+        document.getElementById("progOv").classList.add("vis");
+        const queue = S.files.filter((f) => f.status === "queue");
+        const hist = [];
+        let done = 0;
+
+        for (let i = 0; i < queue.length; i++) {
+          const f = queue[i];
+          f.status = "printing";
+          renderList();
+          document.getElementById("progSub").textContent =
+            `[${i + 1}/${queue.length}] ${f.name}`;
+          document.getElementById("progBar").style.width =
+            `${(i / queue.length) * 100}%`;
+          const t0 = Date.now();
+          try {
+            if (window.electronAPI) {
+              // Per-file settings override global jika ada
+              const fCopies = f.fileCopies || S.copies;
+              const fOri = f.fileOrientation || S.orientation;
+              const fPf = f.filePageFrom || pf;
+              const fPt = f.filePageTo || pt;
+              const results = await window.electronAPI.printFiles({
+                files: [
+                  {
+                    path: f.path,
+                    pageFrom: fPf,
+                    pageTo: fPt,
+                    fileCopies: f.fileCopies,
+                    fileOrientation: f.fileOrientation,
+                  },
+                ],
+                printer: S.printer,
+                copies: fCopies,
+                orientation: fOri,
+                nup: S.nup || 1,
+                duplex: S.duplex || false,
+                paperSize: S.paperSize || "a4",
+              });
+              // Cek hasil — main process return { success, error } per file
+              if (results?.[0] && !results[0].success) {
+                throw new Error(results[0].error || "Print gagal");
+              }
+            } else {
+              await new Promise((r) =>
+                setTimeout(r, 700 + Math.random() * 400),
+              );
+              if (Math.random() > 0.07) {
+              } else throw new Error("Demo error");
+            }
+            f.status = "done";
+            done++;
+            hist.push({
+              id: Date.now() + Math.random(),
+              name: f.name,
+              path: f.path,
+              ext: f.ext,
+              printer: S.printer,
+              copies: fCopies || S.copies,
+              pageFrom: fPf || pf,
+              pageTo: fPt || pt,
+              duration: Date.now() - t0,
+              success: true,
+            });
+          } catch (err) {
+            f.status = "error";
+            f.errMsg = err.message;
+            showToast(`✕ ${f.name}: ${err.message}`, "error");
+            hist.push({
+              id: Date.now() + Math.random(),
+              name: f.name,
+              path: f.path,
+              ext: f.ext,
+              printer: S.printer,
+              copies: S.copies,
+              success: false,
+              error: err.message,
+            });
+          }
+          renderList();
+          updStats();
+        }
+        document.getElementById("progBar").style.width = "100%";
+        await new Promise((r) => setTimeout(r, 350));
+        document.getElementById("progOv").classList.remove("vis");
+        S.printing = false;
+        updPrintBtn();
+        saveQueueToDisk(); // update status done/error di disk
+
+        if (hist.length) {
+          S.history = window.electronAPI
+            ? await window.electronAPI.addHistory(hist)
+            : [...hist, ...S.history].slice(0, 500);
+          S.histFiltered = S.history;
+          renderHist();
+          await loadLifetimeStats();
+          renderRecent();
+        }
+        const errs = S.files.filter((f) => f.status === "error").length;
+        const finalMsg =
+          errs === 0
+            ? `✓ ${done} dokumen terkirim`
+            : `${done} berhasil, ${errs} gagal`;
+        showToast(finalMsg, errs > 0 ? "warning" : "success");
+        playSound(errs === 0 ? "success" : "error");
+        // Windows native toast notification
+        if (window.electronAPI?.showToast) {
+          window.electronAPI.showToast({
+            title: errs === 0 ? "Print Selesai ✓" : "Print Selesai (ada error)",
+            message: `${finalMsg} — printer: ${S.printer}`,
+          });
+        }
+      }
+
+      // ══════════════════════
+      // PRINT TO PDF
+      // ══════════════════════
+      async function printToPdf() {
+        if (!S.files.length) return;
+        const defName =
+          S.files.length === 1
+            ? S.files[0].name.replace(/\.[^.]+$/, "") + "_output.pdf"
+            : "lazy_print_output.pdf";
+        let out = window.electronAPI
+          ? await window.electronAPI.savePdfDialog(defName)
+          : "/demo/" + defName;
+        if (!out) return;
+        S.printing = true;
+        updPrintBtn();
+        document.getElementById("progTitle").textContent = "Exporting to PDF";
+        document.getElementById("progSub").textContent =
+          `Menggabungkan ${S.files.length} dokumen...`;
+        document.getElementById("progBar").style.width = "20%";
+        document.getElementById("progOv").classList.add("vis");
+        const pf = S.rangeEnabled
+          ? parseInt(document.getElementById("pageFrom").value) || null
+          : null;
+        const pt = S.rangeEnabled
+          ? parseInt(document.getElementById("pageTo").value) || null
+          : null;
+        try {
+          if (window.electronAPI)
+            await window.electronAPI.printToPdf({
+              files: S.files.map((f) => f.path),
+              outputPath: out,
+              pageFrom: pf,
+              pageTo: pt,
+            });
+          else await new Promise((r) => setTimeout(r, 2000));
+          document.getElementById("progBar").style.width = "100%";
+          await new Promise((r) => setTimeout(r, 300));
+          document.getElementById("progOv").classList.remove("vis");
+          S.outPdf = out;
+          document.getElementById("pdfOkPath").textContent = out;
+          openModal("pdfOkModal");
+          const e2 = {
+            id: Date.now().toString(),
+            name: defName,
+            path: out,
+            ext: "pdf",
+            printer: "Export PDF",
+            copies: 1,
+            pageFrom: pf,
+            pageTo: pt,
+            success: true,
+          };
+          S.history = window.electronAPI
+            ? await window.electronAPI.addHistory([e2])
+            : [e2, ...S.history];
+          S.histFiltered = S.history;
+          renderHist();
+        } catch (err) {
+          document.getElementById("progOv").classList.remove("vis");
+          showToast(`Export gagal: ${err.message}`, "error");
+        }
+        S.printing = false;
+        updPrintBtn();
+      }
+      function openOutPdf() {
+        if (S.outPdf && window.electronAPI)
+          window.electronAPI.openOutputPdf(S.outPdf);
+        closeModal("pdfOkModal");
+      }
+
+      // ══════════════════════
+      // HISTORY
+      // ══════════════════════
+      async function loadHist() {
+        try {
+          S.history = window.electronAPI
+            ? await window.electronAPI.getHistory()
+            : [];
+        } catch {
+          S.history = [];
+        }
+        S.histFiltered = S.history;
+        renderHist();
+      }
+      function renderHist() {
+        const list = document.getElementById("hList");
+        const hb = document.getElementById("hBadge");
+        hb.textContent = S.history.length;
+        hb.style.display = S.history.length > 0 ? "inline-flex" : "none";
+        if (!S.histFiltered.length) {
+          list.innerHTML = `<div class="h-empty"><p>${S.history.length === 0 ? "Belum ada riwayat print" : "Tidak ada hasil"}</p></div>`;
+          return;
+        }
+        list.innerHTML = S.histFiltered
+          .map((h) => {
+            const ts = h.timestamp
+              ? new Date(h.timestamp).toLocaleString("id-ID", {
+                  day: "2-digit",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "";
+            const dur = h.duration
+              ? ` · ${(h.duration / 1000).toFixed(1)}s`
+              : "";
+            const pg =
+              h.pageFrom && h.pageTo ? ` · p.${h.pageFrom}–${h.pageTo}` : "";
+            return `<div class="hi">
+      <div class="fbadge ${BADGE[h.ext || ""] || "bo"}">${h.ext || "?"}</div>
+      <div class="hi-info">
+        <div class="hi-name">${h.name}</div>
+        <div class="hi-meta">
+          <span class="htag ${h.success ? "t-ok" : "t-er"}">${h.success ? "✓ OK" : "✕ FAIL"}</span>
+          <span class="htag t-pr">🖨 ${(h.printer || "—").substring(0, 16)}</span>
+          ${h.copies > 1 ? `<span class="htag t-tm">×${h.copies}</span>` : ""}
+          ${pg ? `<span class="htag t-tm">${pg}</span>` : ""}
+          <span class="htag t-tm">${ts}${dur}</span>
+        </div>
+      </div>
+      <button class="hi-del" onclick="delHistItem('${h.id}')">✕</button>
+    </div>`;
+          })
+          .join("");
+      }
+      function filterHist() {
+        const q = document.getElementById("hSearch").value.toLowerCase();
+        S.histFiltered = q
+          ? S.history.filter(
+              (h) =>
+                h.name.toLowerCase().includes(q) ||
+                (h.printer || "").toLowerCase().includes(q),
+            )
+          : S.history;
+        renderHist();
+      }
+      async function clearHist() {
+        if (!confirm("Hapus semua riwayat?")) return;
+        S.history = window.electronAPI
+          ? await window.electronAPI.clearHistory()
+          : [];
+        S.histFiltered = [];
+        renderHist();
+        showToast("Riwayat dihapus", "info");
+      }
+      async function delHistItem(id) {
+        S.history = window.electronAPI
+          ? await window.electronAPI.deleteHistoryItem(id)
+          : S.history.filter((h) => h.id != id);
+        filterHist();
+      }
+
+      // ══════════════════════
+      // MODAL + KEY
+      // ══════════════════════
+      function openModal(id) {
+        document.getElementById(id).classList.add("vis");
+      }
+      function closeModal(id) {
+        document.getElementById(id).classList.remove("vis");
+      }
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape")
+          document
+            .querySelectorAll(".modal-ov.vis")
+            .forEach((m) => m.classList.remove("vis"));
+      });
+      window.addEventListener("load", () => {
+        document.querySelectorAll(".modal-ov").forEach((m) =>
+          m.addEventListener("click", (e) => {
+            if (e.target === m) m.classList.remove("vis");
+          }),
+        );
+      });
+
+      // ══════════════════════
+      // TOAST
+      // ══════════════════════
+      function showToast(msg, type = "success") {
+        const c = document.getElementById("toastC");
+        const t = document.createElement("div");
+        t.className = `toast ${type}`;
+        t.innerHTML = `<span class="toast-dot"></span>${msg}`;
+        c.appendChild(t);
+        setTimeout(() => {
+          t.style.opacity = "0";
+          t.style.transform = "translateX(10px)";
+          t.style.transition = "all .2s";
+          setTimeout(() => t.remove(), 200);
+        }, 3000);
+      }
+
+      init();
+    </script>
+  </body>
+</html>
