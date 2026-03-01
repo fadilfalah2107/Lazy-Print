@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lazy Print — License Keygen</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+        background: #0d0d0f;
+        color: #e8e8ec;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        gap: 0;
+        padding: 32px;
+      }
+      .card {
+        background: #111116;
+        border: 1px solid #2a2a3a;
+        border-radius: 14px;
+        padding: 36px 40px;
+        width: 100%;
+        max-width: 480px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .header { text-align: center; }
+      .logo {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #ff6b35, #ff9a6c);
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        margin-bottom: 12px;
+      }
+      h1 { font-size: 18px; color: #ff6b35; margin-bottom: 4px; }
+      .sub { font-size: 10px; color: #5a5a7a; }
+      label { font-size: 10px; color: #9898b8; letter-spacing: 0.08em; }
+      input[type="text"] {
+        width: 100%;
+        background: #16161f;
+        border: 1px solid #3a3a52;
+        color: #e8e8ec;
+        font-family: inherit;
+        font-size: 13px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        outline: none;
+        margin-top: 6px;
+        transition: border-color 0.15s;
+      }
+      input[type="text"]:focus { border-color: #ff6b35; }
+      button {
+        width: 100%;
+        padding: 11px;
+        background: linear-gradient(135deg, #ff6b35, #ff9a6c);
+        border: none;
+        border-radius: 8px;
+        color: #fff;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        cursor: pointer;
+        transition: opacity 0.15s;
+      }
+      button:hover { opacity: 0.88; }
+      .result-box {
+        display: none;
+        background: #0d0d0f;
+        border: 1px solid #2a2a3a;
+        border-radius: 10px;
+        padding: 18px;
+        text-align: center;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .result-box.vis { display: flex; }
+      .result-label { font-size: 9px; color: #5a5a7a; letter-spacing: 0.1em; }
+      .result-user { font-size: 11px; color: #9898b8; }
+      .result-code {
+        font-size: 20px;
+        letter-spacing: 0.18em;
+        color: #3cffa0;
+        font-weight: 700;
+        word-break: break-all;
+      }
+      .copy-btn {
+        background: #1c1c28;
+        border: 1px solid #3a3a52;
+        color: #9898b8;
+        font-size: 10px;
+        padding: 7px;
+        font-weight: 400;
+        letter-spacing: 0.04em;
+        margin-top: 4px;
+      }
+      .copy-btn:hover { color: #e8e8ec; opacity: 1; }
+      .copy-btn.copied { color: #3cffa0; border-color: rgba(60,255,160,0.3); }
+      .note {
+        font-size: 9px;
+        color: #3a3a52;
+        text-align: center;
+        line-height: 1.7;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="header">
+        <div class="logo">🖨</div>
+        <h1>Lazy Print · Keygen</h1>
+        <p class="sub">Generate kode aktivasi dari username</p>
+      </div>
+
+      <div>
+        <label>USERNAME</label>
+        <input
+          type="text"
+          id="username"
+          placeholder="masukkan username..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+
+      <button onclick="generate()">Generate Kode Aktivasi</button>
+
+      <div class="result-box" id="resultBox">
+        <div class="result-label">KODE AKTIVASI UNTUK</div>
+        <div class="result-user" id="resultUser"></div>
+        <div class="result-code" id="resultCode"></div>
+        <button class="copy-btn" id="copyBtn" onclick="copyCode()">
+          📋 Copy ke Clipboard
+        </button>
+      </div>
+
+      <p class="note">
+        Kode ini unik per username · Aktivasi offline · Tidak perlu internet
+      </p>
+    </div>
+
+    <script>
+      const SECRET = "LP-v1.6-LAZYPRINT-2025-OFFLINE-KEY-XK9Z";
+
+      async function generate() {
+        const username = document.getElementById("username").value.toLowerCase().trim();
+        if (!username) {
+          document.getElementById("username").focus();
+          return;
+        }
+
+        const enc = new TextEncoder();
+        const keyMat = await crypto.subtle.importKey(
+          "raw",
+          enc.encode(SECRET),
+          { name: "HMAC", hash: "SHA-256" },
+          false,
+          ["sign"]
+        );
+        const sig = await crypto.subtle.sign("HMAC", keyMat, enc.encode(username));
+        const hex = Array.from(new Uint8Array(sig))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+        const first20 = hex.substring(0, 20);
+        const code = [0, 5, 10, 15]
+          .map((i) => first20.substring(i, i + 5).toUpperCase())
+          .join("-");
+
+        document.getElementById("resultUser").textContent = username;
+        document.getElementById("resultCode").textContent = code;
+        document.getElementById("resultBox").classList.add("vis");
+        document.getElementById("copyBtn").textContent = "📋 Copy ke Clipboard";
+        document.getElementById("copyBtn").classList.remove("copied");
+        window._lastCode = code;
+      }
+
+      async function copyCode() {
+        if (!window._lastCode) return;
+        try {
+          await navigator.clipboard.writeText(window._lastCode);
+          const btn = document.getElementById("copyBtn");
+          btn.textContent = "✓ Tersalin!";
+          btn.classList.add("copied");
+          setTimeout(() => {
+            btn.textContent = "📋 Copy ke Clipboard";
+            btn.classList.remove("copied");
+          }, 2000);
+        } catch (e) {
+          alert("Copy gagal. Salin manual: " + window._lastCode);
+        }
+      }
+
+      document.getElementById("username").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") generate();
+      });
+    </script>
+  </body>
+</html>

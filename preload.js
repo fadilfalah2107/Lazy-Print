@@ -57,4 +57,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Quit from tray menu
   quitApp: () => ipcRenderer.send("quit-app"),
+
+  // License / Trial
+  getLicenseStatus: () => ipcRenderer.invoke("get-license-status"),
+  activateLicense: (opts) => ipcRenderer.invoke("activate-license", opts),
 });

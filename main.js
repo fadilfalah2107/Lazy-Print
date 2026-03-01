@@ -11,6 +11,21 @@ const path = require("path");
 const { exec, execFile } = require("child_process");
 const fs = require("fs");
 const os = require("os");
+const crypto = require("crypto");
+
+// ============================================================
+// LICENSE CONSTANTS
+// ============================================================
+const LICENSE_SECRET = "LP-v1.6-LAZYPRINT-2025-OFFLINE-KEY-XK9Z";
+const TRIAL_DAYS = 14;
+const licenseFile = () => path.join(app.getPath("userData"), "license.json");
+
+// Non-PDF extensions blocked after trial expires
+const BLOCKED_EXTS = new Set([
+  ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+  ".odt", ".ods", ".rtf", ".html", ".htm",
+  ".txt", ".png", ".jpg", ".jpeg", ".bmp", ".gif",
+]);
 
 let mainWindow;
 let tray = null;
@@ -18,6 +33,94 @@ app.isQuitting = false;
 
 // Wajib di Windows agar icon taskbar & Alt+Tab benar
 app.setAppUserModelId("com.lazprint.app");
+
+// ============================================================
+// LICENSE HELPERS
+// ============================================================
+
+function computeActivationCode(username) {
+  const hmac = crypto.createHmac("sha256", LICENSE_SECRET);
+  hmac.update(username.toLowerCase().trim());
+  const hex = hmac.digest("hex");
+  const first20 = hex.substring(0, 20);
+  return [0, 5, 10, 15]
+    .map((i) => first20.substring(i, i + 5).toUpperCase())
+    .join("-");
+}
+
+function computeLicenseChecksum(data) {
+  const payload = JSON.stringify({
+    trialStart: data.trialStart,
+    status: data.status,
+    username: data.username,
+    activationCode: data.activationCode,
+    activatedAt: data.activatedAt,
+  });
+  return crypto
+    .createHmac("sha256", LICENSE_SECRET)
+    .update(payload)
+    .digest("hex")
+    .substring(0, 32);
+}
+
+function readLicense() {
+  try {
+    const lf = licenseFile();
+    if (!fs.existsSync(lf)) return null;
+    const raw = JSON.parse(fs.readFileSync(lf, "utf8"));
+    const expected = computeLicenseChecksum(raw);
+    if (raw.checksum !== expected) return { tampered: true };
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
+function writeLicense(data) {
+  const toWrite = { ...data, checksum: computeLicenseChecksum(data) };
+  fs.writeFileSync(licenseFile(), JSON.stringify(toWrite, null, 2), "utf8");
+}
+
+function getLicenseStatus() {
+  let lic = readLicense();
+
+  // Tampered file → expired
+  if (lic && lic.tampered) {
+    return { status: "expired", daysLeft: 0 };
+  }
+
+  // First launch → create trial record
+  if (!lic) {
+    const fresh = {
+      trialStart: new Date().toISOString(),
+      status: "trial",
+      username: null,
+      activationCode: null,
+      activatedAt: null,
+    };
+    writeLicense(fresh);
+    lic = fresh;
+  }
+
+  // Already activated → re-verify code matches username (prevents manual edit)
+  if (lic.status === "activated" && lic.username && lic.activationCode) {
+    const expected = computeActivationCode(lic.username);
+    if (lic.activationCode === expected) {
+      return { status: "activated", username: lic.username };
+    }
+    return { status: "expired", daysLeft: 0 };
+  }
+
+  // Trial: compute remaining days
+  const start = new Date(lic.trialStart).getTime();
+  const elapsed = Math.floor((Date.now() - start) / (1000 * 60 * 60 * 24));
+  const daysLeft = Math.max(0, TRIAL_DAYS - elapsed);
+
+  if (daysLeft > 0) {
+    return { status: "trial", daysLeft, trialStart: lic.trialStart };
+  }
+  return { status: "expired", daysLeft: 0 };
+}
 
 // Saat packaged: icon ada di resources/ (extraResources)
 // Saat dev (npm start): icon ada di build/
@@ -896,6 +999,42 @@ ipcMain.handle("get-lifetime-stats", async () => {
 });
 
 // ============================================================
+// LICENSE IPC
+// ============================================================
+ipcMain.handle("get-license-status", async () => {
+  return getLicenseStatus();
+});
+
+ipcMain.handle("activate-license", async (event, { username, code }) => {
+  if (!username || !code) {
+    return { success: false, error: "Username dan kode aktivasi diperlukan." };
+  }
+  const normalUser = username.toLowerCase().trim();
+  const normalCode = code.trim().toUpperCase();
+  const expected = computeActivationCode(normalUser);
+
+  if (normalCode !== expected) {
+    return { success: false, error: "Kode aktivasi tidak valid untuk username ini." };
+  }
+
+  // Preserve existing trialStart
+  let trialStart = new Date().toISOString();
+  try {
+    const existing = readLicense();
+    if (existing && existing.trialStart) trialStart = existing.trialStart;
+  } catch { /* ignore */ }
+
+  writeLicense({
+    trialStart,
+    status: "activated",
+    username: normalUser,
+    activationCode: normalCode,
+    activatedAt: new Date().toISOString(),
+  });
+  return { success: true, username: normalUser };
+});
+
+// ============================================================
 // QUEUE PERSISTENCE
 // ============================================================
 const queueFile = path.join(app.getPath("userData"), "queue.json");
@@ -1047,8 +1186,32 @@ ipcMain.handle(
     event,
     { files, printer, copies, orientation, nup, duplex, paperSize },
   ) => {
-    const results = [];
-    for (const item of files) {
+    // --- LICENSE GUARD ---
+    const licStatus = getLicenseStatus();
+    const licenseBlocked = [];
+    let printQueue = files;
+    if (licStatus.status !== "activated" && licStatus.status !== "trial") {
+      // Expired: separate blocked (non-PDF) from allowed (PDF)
+      printQueue = [];
+      for (const item of files) {
+        const fp = typeof item === "string" ? item : item.path;
+        const ext = path.extname(fp).toLowerCase();
+        if (BLOCKED_EXTS.has(ext)) {
+          licenseBlocked.push({
+            file: fp,
+            success: false,
+            error: "Trial berakhir. Aktifkan lisensi untuk print format ini.",
+            licenseBlocked: true,
+          });
+        } else {
+          printQueue.push(item); // PDF — still allowed
+        }
+      }
+    }
+    // --- END LICENSE GUARD ---
+
+    const results = [...licenseBlocked];
+    for (const item of printQueue) {
       const filePath = typeof item === "string" ? item : item.path;
       const pageFrom = item.pageFrom || null,
         pageTo = item.pageTo || null;

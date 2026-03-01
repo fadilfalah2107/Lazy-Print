@@ -1916,6 +1916,133 @@
         padding-top: 6px;
         border-top: 1px solid var(--b);
       }
+
+      /* ── TRIAL BANNER ───────────────────────────── */
+      .trial-banner {
+        display: none;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 16px;
+        background: rgba(255, 217, 61, 0.07);
+        border-bottom: 1px solid rgba(255, 217, 61, 0.2);
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--wa);
+        -webkit-app-region: no-drag;
+        flex-shrink: 0;
+      }
+      .trial-banner.vis { display: flex; }
+      .trial-banner.expired {
+        background: rgba(255, 77, 109, 0.07);
+        border-bottom-color: rgba(255, 77, 109, 0.2);
+        color: var(--er);
+      }
+      .trial-banner-sp { flex: 1; }
+      .trial-cta {
+        padding: 2px 9px;
+        border: 1px solid currentColor;
+        border-radius: 4px;
+        background: transparent;
+        color: inherit;
+        font-family: var(--mono);
+        font-size: 9px;
+        cursor: pointer;
+        letter-spacing: 0.05em;
+      }
+      .trial-cta:hover { opacity: 0.7; }
+
+      /* ── LICENSE BADGE (titlebar) ───────────────── */
+      .lic-badge {
+        font-family: var(--mono);
+        font-size: 9px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        letter-spacing: 0.08em;
+        cursor: pointer;
+        -webkit-app-region: no-drag;
+        white-space: nowrap;
+        border: 1px solid transparent;
+        transition: opacity 0.15s;
+      }
+      .lic-badge:hover { opacity: 0.75; }
+      .lic-trial {
+        background: rgba(255, 217, 61, 0.1);
+        color: var(--wa);
+        border-color: rgba(255, 217, 61, 0.3);
+      }
+      .lic-expired {
+        background: rgba(255, 77, 109, 0.1);
+        color: var(--er);
+        border-color: rgba(255, 77, 109, 0.3);
+        animation: wp 2s infinite;
+      }
+      .lic-active {
+        background: rgba(60, 255, 160, 0.1);
+        color: var(--ok);
+        border-color: rgba(60, 255, 160, 0.3);
+        cursor: default;
+      }
+      .lic-active:hover { opacity: 1; }
+
+      /* ── ACTIVATION MODAL ───────────────────────── */
+      .act-code-input {
+        width: 100%;
+        background: var(--s2);
+        border: 1px solid var(--b2);
+        color: var(--tx);
+        font-family: var(--mono);
+        font-size: 14px;
+        padding: 10px 12px;
+        border-radius: 7px;
+        outline: none;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        text-align: center;
+        transition: border-color 0.15s;
+        margin-bottom: 4px;
+      }
+      .act-code-input:focus { border-color: var(--ac); }
+      .act-code-input.err { border-color: var(--er); }
+      .act-error {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--er);
+        min-height: 14px;
+        margin-bottom: 8px;
+      }
+      .act-info {
+        padding: 8px 10px;
+        background: var(--s2);
+        border: 1px solid var(--b);
+        border-radius: 6px;
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--tx3);
+        line-height: 1.9;
+        margin-bottom: 12px;
+      }
+
+      /* ── BLOCKED FILE OVERLAY ───────────────────── */
+      .fi-blocked {
+        position: relative;
+        opacity: 0.45;
+        pointer-events: none;
+      }
+      .fi-blocked::after {
+        content: "⛔ TRIAL BERAKHIR — aktifkan lisensi";
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--er);
+        letter-spacing: 0.06em;
+        pointer-events: none;
+        background: rgba(10, 10, 15, 0.55);
+        border-radius: inherit;
+      }
     </style>
   </head>
   <body>
@@ -1935,6 +2062,9 @@
       <div class="tb-sp"></div>
       <span class="dep-badge dep-ok" id="depBadge" onclick="openDepModal()"
         >● GS OK</span
+      >
+      <span class="lic-badge lic-trial" id="licBadge" onclick="openModal('actModal')"
+        >⏱ 14d trial</span
       >
       <span
         class="dep-badge"
@@ -1961,6 +2091,13 @@
           onclick="window.electronAPI?.closeWindow()"
         ></button>
       </div>
+    </div>
+
+    <!-- TRIAL BANNER -->
+    <div class="trial-banner" id="trialBanner">
+      <span id="trialBannerMsg">⏱ Trial: 14 hari tersisa. Setelah berakhir, hanya PDF yang bisa diprint.</span>
+      <span class="trial-banner-sp"></span>
+      <button class="trial-cta" onclick="openModal('actModal')">Aktifkan Lisensi</button>
     </div>
 
     <div class="app">
@@ -2511,6 +2648,51 @@
       </div>
     </div>
 
+    <!-- MODAL AKTIVASI LISENSI -->
+    <div class="modal-ov" id="actModal">
+      <div class="modal" style="width: 440px">
+        <div class="m-title" id="actModalTitle">Aktifkan Lazy Print</div>
+        <div class="m-sub">
+          Masukkan username dan kode aktivasi yang diberikan.<br />
+          Aktivasi bersifat offline — tidak perlu koneksi internet.
+        </div>
+
+        <div class="act-info" id="actTrialInfo" style="margin-top: 12px"></div>
+
+        <div class="sl" style="margin: 10px 0 5px">Username</div>
+        <input
+          type="text"
+          class="m-input"
+          id="actUsername"
+          placeholder="username kamu..."
+          autocomplete="off"
+          spellcheck="false"
+          style="margin-bottom: 10px"
+        />
+
+        <div class="sl" style="margin-bottom: 5px">Kode Aktivasi</div>
+        <input
+          type="text"
+          class="act-code-input"
+          id="actCode"
+          placeholder="XXXXX-XXXXX-XXXXX-XXXXX"
+          maxlength="23"
+          autocomplete="off"
+          spellcheck="false"
+          oninput="fmtActCode(this)"
+          onkeydown="if(event.key==='Enter') submitActivation()"
+        />
+        <div class="act-error" id="actError"></div>
+
+        <div class="m-row" style="margin-top: 4px">
+          <button class="m-btn sec" onclick="closeModal('actModal')">Tutup</button>
+          <button class="m-btn pri" id="actBtn" onclick="submitActivation()">
+            Aktifkan
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- PROGRESS -->
     <div class="prog-ov" id="progOv">
       <div class="prog-ic">
@@ -2569,6 +2751,7 @@
         soundEnabled: true,
         undoStack: [], // max 10 undo entries
         lifetimeStats: null,
+        license: { status: "trial", daysLeft: 14, username: null },
       };
 
       // ══════════════════════
@@ -2583,6 +2766,7 @@
           checkDeps(),
           loadHist(),
           loadProfs(),
+          loadLicenseStatus(),
         ]);
         await loadQueueFromDisk();
         await loadWatches();
@@ -3278,8 +3462,9 @@
             const fo = f.fileOrientation || S.orientation;
             const fpf = f.filePageFrom || "";
             const fpt = f.filePageTo || "";
+            const isBlocked = S.license.status === "expired" && !isAllowedExt(f.ext);
             return `
-    <div class="fi ${f.status !== "queue" ? f.status : ""} ${S.prevFile?.id === f.id ? "sel" : ""} ${f._selected ? "multi-sel" : ""} ${f._new ? "fi-new" : ""} ${settOpen ? "fi-full" : ""}"
+    <div class="fi ${f.status !== "queue" ? f.status : ""} ${S.prevFile?.id === f.id ? "sel" : ""} ${f._selected ? "multi-sel" : ""} ${f._new ? "fi-new" : ""} ${settOpen ? "fi-full" : ""} ${isBlocked ? "fi-blocked" : ""}"
          id="fi-${f.id}"
          draggable="true"
          ondragstart="oDragStart(event,${i})"
@@ -3361,9 +3546,11 @@
             : "DROP FILES TO QUEUE";
       }
       function updPrintBtn() {
-        const ok = S.files.length > 0 && !S.printing;
+        const queueFiles = S.files.filter((f) => f.status === "queue");
+        const hasAllowed = queueFiles.some((f) => isAllowedExt(f.ext));
+        const ok = queueFiles.length > 0 && !S.printing && hasAllowed;
         document.getElementById("btnPrint").disabled = !ok || !S.printer;
-        document.getElementById("btnToPdf").disabled = !ok;
+        document.getElementById("btnToPdf").disabled = !S.files.some((f) => f.status === "queue");
       }
 
       // ══════════════════════════════════════════════════
@@ -3900,6 +4087,22 @@
       // ══════════════════════
       async function startPrint() {
         if (S.printing || !S.files.length) return;
+
+        // LICENSE GUARD: expired → hanya PDF yang boleh
+        if (S.license.status === "expired") {
+          const blocked = S.files.filter(
+            (f) => f.status === "queue" && !isAllowedExt(f.ext)
+          );
+          if (blocked.length > 0 && !S.files.some((f) => f.status === "queue" && isAllowedExt(f.ext))) {
+            showToast(`⛔ Trial berakhir. Aktifkan lisensi untuk print format ini.`, "error");
+            openModal("actModal");
+            return;
+          }
+          if (blocked.length > 0) {
+            showToast(`⛔ ${blocked.length} file diblokir (trial berakhir). Hanya PDF yang diprint.`, "warn");
+          }
+        }
+
         S.printing = true;
         updPrintBtn();
         const pf = S.rangeEnabled
@@ -4175,10 +4378,140 @@
       }
 
       // ══════════════════════
+      // LICENSE / TRIAL
+      // ══════════════════════
+      async function loadLicenseStatus() {
+        try {
+          const lic = window.electronAPI
+            ? await window.electronAPI.getLicenseStatus()
+            : { status: "trial", daysLeft: 14 };
+          S.license = lic;
+        } catch (e) {
+          S.license = { status: "trial", daysLeft: 14 };
+        }
+        updateLicenseUI();
+      }
+
+      function updateLicenseUI() {
+        const lic = S.license;
+        const badge = document.getElementById("licBadge");
+        const banner = document.getElementById("trialBanner");
+        const bannerMsg = document.getElementById("trialBannerMsg");
+
+        badge.className = "lic-badge";
+        banner.classList.remove("vis", "expired");
+
+        if (lic.status === "activated") {
+          badge.classList.add("lic-active");
+          badge.textContent = "✓ ACTIVATED";
+          badge.onclick = null;
+          return;
+        }
+        if (lic.status === "trial") {
+          badge.classList.add("lic-trial");
+          badge.textContent = `⏱ ${lic.daysLeft}d trial`;
+          badge.onclick = () => openModal("actModal");
+          banner.classList.add("vis");
+          bannerMsg.textContent = `⏱ Trial: ${lic.daysLeft} hari tersisa. Setelah berakhir, hanya PDF yang bisa diprint.`;
+          return;
+        }
+        // expired
+        badge.classList.add("lic-expired");
+        badge.textContent = "⚠ TRIAL BERAKHIR";
+        badge.onclick = () => openModal("actModal");
+        banner.classList.add("vis", "expired");
+        bannerMsg.textContent = "⛔ Trial berakhir. Aktifkan lisensi — atau hanya PDF yang bisa diprint.";
+        const t = document.getElementById("actModalTitle");
+        if (t) t.textContent = "Trial Berakhir — Aktifkan Lazy Print";
+      }
+
+      function isAllowedExt(ext) {
+        if (S.license.status === "activated" || S.license.status === "trial") return true;
+        return ext.toLowerCase() === "pdf";
+      }
+
+      function fmtActCode(input) {
+        let raw = input.value.replace(/[^A-Fa-f0-9]/g, "").toUpperCase();
+        if (raw.length > 20) raw = raw.substring(0, 20);
+        const parts = [];
+        for (let i = 0; i < raw.length; i += 5) parts.push(raw.substring(i, i + 5));
+        input.value = parts.join("-");
+        input.classList.remove("err");
+        document.getElementById("actError").textContent = "";
+      }
+
+      async function submitActivation() {
+        const username = document.getElementById("actUsername").value.trim();
+        const code = document.getElementById("actCode").value.trim();
+        const errEl = document.getElementById("actError");
+        const codeInput = document.getElementById("actCode");
+        errEl.textContent = "";
+        codeInput.classList.remove("err");
+
+        if (!username) {
+          errEl.textContent = "Username tidak boleh kosong.";
+          document.getElementById("actUsername").focus();
+          return;
+        }
+        if (code.replace(/-/g, "").length < 20) {
+          errEl.textContent = "Kode aktivasi harus 20 karakter (format XXXXX-XXXXX-XXXXX-XXXXX).";
+          codeInput.classList.add("err");
+          return;
+        }
+
+        const btn = document.getElementById("actBtn");
+        btn.disabled = true;
+        btn.textContent = "Memverifikasi...";
+
+        try {
+          const result = window.electronAPI
+            ? await window.electronAPI.activateLicense({ username, code })
+            : { success: false, error: "Demo mode" };
+
+          if (result.success) {
+            showToast("✓ Lisensi aktif! Selamat menikmati Lazy Print.", "ok");
+            closeModal("actModal");
+            await loadLicenseStatus();
+            renderList();
+            updPrintBtn();
+          } else {
+            errEl.textContent = result.error || "Kode tidak valid.";
+            codeInput.classList.add("err");
+          }
+        } catch (e) {
+          errEl.textContent = "Terjadi kesalahan. Coba lagi.";
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Aktifkan";
+        }
+      }
+
+      function refreshActModal() {
+        const infoEl = document.getElementById("actTrialInfo");
+        const lic = S.license;
+        if (lic.status === "activated") {
+          infoEl.innerHTML = `✓ Sudah diaktifkan atas nama <strong style="color:var(--ok)">${lic.username}</strong>.`;
+          document.getElementById("actBtn").style.display = "none";
+        } else if (lic.status === "trial") {
+          infoEl.innerHTML = `Trial aktif · <strong>${lic.daysLeft} hari</strong> tersisa dari 14 hari.`;
+          document.getElementById("actBtn").style.display = "";
+        } else {
+          infoEl.innerHTML = `Trial telah berakhir. Aktifkan untuk membuka semua format file.`;
+          document.getElementById("actBtn").style.display = "";
+        }
+        // Reset form
+        document.getElementById("actUsername").value = "";
+        document.getElementById("actCode").value = "";
+        document.getElementById("actError").textContent = "";
+        document.getElementById("actCode").classList.remove("err");
+      }
+
+      // ══════════════════════
       // MODAL + KEY
       // ══════════════════════
       function openModal(id) {
         document.getElementById(id).classList.add("vis");
+        if (id === "actModal") refreshActModal();
       }
       function closeModal(id) {
         document.getElementById(id).classList.remove("vis");
