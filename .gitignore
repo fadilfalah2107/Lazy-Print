@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist/win-unpacked/
+dist/Print Conductor-win32-x64/
+
+# Environment
+.env
+.env.*
+
+# Logs
+*.log
+logs/
+
+# Installer artifacts
+create-installer.ps1
+installer-config.json
+installer.iss
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Temp / cache
+*.tmp
+*.temp
+.cache/
+.claude
